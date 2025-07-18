@@ -1,0 +1,6 @@
+Thumbs.db
+debug/
+/target
+Cargo.lock
+**/*.rs.bk
+*.pdb
