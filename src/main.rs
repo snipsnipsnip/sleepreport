@@ -1,5 +1,8 @@
+use anyhow::Context;
+use chrono::Local;
 use ical::IcalParser;
 use ical::parser::ical::component::IcalCalendar;
+use ical_property;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -23,12 +26,14 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn make_table(ical: IcalCalendar) -> anyhow::Result<String> {
-    let mut table = SleepTable::new();
+    let mut table = SleepTable::new(Local::now()).context("foo")?;
 
     for event in ical.events.into_iter() {
-        let e = event.try_into()?;
-        table.eat(&e);
+        let e: ical_property::Event = event.try_into()?;
+        if table.eat(&e).is_none() {
+            eprintln!("failed to load a sleep: {:?}", e)
+        }
     }
 
-    Ok(format!("{:?}", table))
+    Ok(format!("{}", table.lines(&Local)))
 }

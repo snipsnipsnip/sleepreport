@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = { version = "1.0" }
+anyhow = "1.0"
 chrono = "0.4.41"
 ical_property = "0.1.3"
 
