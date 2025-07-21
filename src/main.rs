@@ -1,3 +1,6 @@
+mod sleep_table;
+use sleep_table::SleepTable;
+
 use anyhow::Context;
 use chrono::Local;
 use ical::IcalParser;
@@ -6,19 +9,19 @@ use ical_property;
 use std::fs::File;
 use std::io::BufReader;
 
-mod sleep_table;
-use sleep_table::SleepTable;
-
 fn main() -> anyhow::Result<()> {
     let buf = BufReader::new(File::open("basic.ics")?);
     let reader = IcalParser::new(buf);
 
-    for line in reader {
-        if let Ok(ical) = line {
-            let table = make_table(ical)?;
-            println!("{}", table);
-        } else {
-            eprintln!("parse error: {:?}", line?);
+    for vcal in reader {
+        match vcal {
+            Ok(ical) => {
+                let table = make_table(ical)?;
+                println!("{}", table);
+            }
+            Err(e) => {
+                eprintln!("parse error: {:?}", e);
+            }
         }
     }
 
@@ -35,5 +38,5 @@ fn make_table(ical: IcalCalendar) -> anyhow::Result<String> {
         }
     }
 
-    Ok(format!("{}", table.lines(&Local)))
+    Ok(table.lines(&Local))
 }

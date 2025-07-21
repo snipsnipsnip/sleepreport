@@ -9,11 +9,13 @@ pub struct SleepTable {
     sleeps: Vec<Range<DateTime<Utc>>>,
 }
 
+const OFFSET_HOURS: i32 = 6;
+
 impl SleepTable {
-    pub fn new<Tz: TimeZone>(today: DateTime<Tz>) -> Option<SleepTable> {
+    pub fn new(today: DateTime<impl TimeZone>) -> Option<SleepTable> {
         let last_monday = last_monday_before(&today);
         let start = last_monday.with_time(NaiveTime::MIN).single()?;
-        let end = start.clone() + Days::new(7) + Duration::hours(7);
+        let end = start.clone() + Days::new(7) + Duration::hours(1 + OFFSET_HOURS as i64);
 
         Some(Self::during(start.to_utc()..end.to_utc()))
     }
@@ -33,40 +35,47 @@ impl SleepTable {
         Some(())
     }
 
-    pub fn lines<Tz: TimeZone>(&self, tz: &Tz) -> String {
+    pub fn lines(&self, tz: &impl TimeZone) -> String {
         let slept = {
             let mut slept = vec![false; (self.range.end - self.range.start).num_hours() as usize];
 
             for sleep in &self.sleeps {
-                let se = fmap(sleep.clone(), |d| (d - self.range.start).num_hours());
+                let sleep_start_index = (sleep.start - self.range.start).num_hours() as usize;
+                let sleep_length_mins = (sleep.end - sleep.start).num_minutes();
+                let sleep_length_hours = ((sleep_length_mins + 30) as f32 / 60f32).round() as usize;
 
-                for hr in se.start..=se.end {
-                    slept[hr as usize] = true;
-                    // (self.range.start + Duration::hours(hr)).with_timezone(tz)
-                }
+                slept[sleep_start_index..sleep_start_index + sleep_length_hours].fill(true);
+                // (self.range.start + Duration::hours(hr)).with_timezone(tz)
             }
 
             slept
         };
 
         let local = fmap(self.range.clone(), |d| d.with_timezone(tz));
-        println!("{:?}", local);
-        let days = (local.end - local.start).num_days();
+        let days = (local.end.clone() - &local.start).num_days() as i32;
 
-        (0..24 as usize)
-            .map(|hr| {
-                format!(
-                    "{:02}:00～{:02}:00\t{}",
-                    (hr + 6) % 24,
-                    (hr + 7) % 24,
-                    (0..days as usize)
-                        .map(|d| if slept[d * 24 + hr + 6] { "睡眠" } else { "" })
-                        .collect::<Vec<_>>()
-                        .join("\t")
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
+        format!(
+            "{:?}\n{}",
+            local,
+            (OFFSET_HOURS..OFFSET_HOURS + 24)
+                .map(|hr| {
+                    format!(
+                        "{:02}:00～{:02}:00\t{}",
+                        hr % 24,
+                        (hr + 1) % 24,
+                        (0_i32..days)
+                            .map(|d| if slept[(d * 24 + hr) as usize] {
+                                "睡眠"
+                            } else {
+                                ""
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\t")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
     }
 
     fn get_datetime(&self, dt: Option<&DateMaybeTime>) -> Option<DateTime<Utc>> {
