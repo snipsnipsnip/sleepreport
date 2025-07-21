@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use chrono::{DateTime, Datelike, Days, Duration, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
+use chrono::{DateTime, Datelike, Days, Duration, NaiveTime, TimeZone, Utc};
 use ical_property::DateMaybeTime;
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl SleepTable {
     }
 
     pub fn eat(&mut self, event: &ical_property::Event) -> Option<()> {
-        let [s, e] = [&event.start, &event.end].map(|d| self.to_local(d.as_ref()));
+        let [s, e] = [&event.start, &event.end].map(|d| self.get_datetime(d.as_ref()));
 
         self.add_sleep(s?, e?);
 
@@ -56,10 +56,11 @@ impl SleepTable {
         (0..24 as usize)
             .map(|hr| {
                 format!(
-                    "{}\t{}",
-                    hr,
+                    "{:02}:00～{:02}:00\t{}",
+                    (hr + 6) % 24,
+                    (hr + 7) % 24,
                     (0..days as usize)
-                        .map(|d| if slept[d * 24 + hr] { "O" } else { "_" })
+                        .map(|d| if slept[d * 24 + hr + 6] { "睡眠" } else { "" })
                         .collect::<Vec<_>>()
                         .join("\t")
                 )
@@ -68,7 +69,7 @@ impl SleepTable {
             .join("\n")
     }
 
-    fn to_local(&self, dt: Option<&DateMaybeTime>) -> Option<DateTime<Utc>> {
+    fn get_datetime(&self, dt: Option<&DateMaybeTime>) -> Option<DateTime<Utc>> {
         match dt? {
             DateMaybeTime::DateTime(d) => Some(d.clone()),
             _ => None,
