@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn make_table(ical: IcalCalendar) -> anyhow::Result<String> {
-    let mut table = SleepTable::new(Local::now()).context("foo")?;
+    let mut table = SleepTable::new(Local::now()).context("init a sleep table")?;
 
     for event in ical.events.into_iter() {
         let e: ical_property::Event = event.try_into()?;
@@ -38,5 +38,8 @@ fn make_table(ical: IcalCalendar) -> anyhow::Result<String> {
         }
     }
 
-    Ok(table.lines(&Local))
+    Ok(table
+        .build_csv_lines(6, &Local)
+        .collect::<Vec<_>>()
+        .join("\n"))
 }
