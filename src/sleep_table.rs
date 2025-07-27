@@ -1,5 +1,5 @@
+use crate::util::native_date_range::NaiveDateRange;
 use chrono::{DateTime, Datelike, Days, Duration, NaiveDate, NaiveTime, TimeZone, Utc};
-use ical_property::DateMaybeTime;
 use std::{fmt::Display, ops::Range};
 
 #[derive(Debug)]
@@ -9,7 +9,7 @@ pub struct SleepTable {
 }
 
 impl SleepTable {
-    pub fn new(today: DateTime<impl TimeZone>) -> Option<SleepTable> {
+    pub fn new(today: DateTime<impl TimeZone>) -> Option<Self> {
         let last_monday = last_monday_before(&today);
         let start = last_monday.with_time(NaiveTime::MIN).single()?;
         let end = start.clone() + Days::new(7) + Duration::hours(23);
@@ -17,19 +17,17 @@ impl SleepTable {
         Some(Self::during(start.to_utc()..end.to_utc()))
     }
 
-    pub fn during(range: Range<DateTime<Utc>>) -> SleepTable {
-        SleepTable {
+    pub fn during(range: Range<DateTime<Utc>>) -> Self {
+        Self {
             range: range,
             sleeps: vec![],
         }
     }
 
-    pub fn eat(&mut self, event: &ical_property::Event) -> Option<()> {
-        let [s, e] = [&event.start, &event.end].map(|d| get_datetime(d.as_ref()));
-
-        self.add_sleep(*s?, *e?);
-
-        Some(())
+    pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) {
+        if self.range.contains(&sleep.start) || self.range.contains(&sleep.end) {
+            self.sleeps.push(sleep);
+        }
     }
 
     pub fn build_csv_lines<Tz>(&self, offset_hours: i32, tz: &Tz) -> impl Iterator<Item = String>
@@ -42,22 +40,16 @@ impl SleepTable {
         let slept = self.collect_sleeps();
 
         let local = fmap(&self.range, |d| d.with_timezone(tz));
+
+        let day_range = fmap(&local, |d| d.date_naive());
+        let header = [make_header(day_range)];
+
         let days = (local.end.clone() - &local.start).num_days();
-
-        let header = {
-            let day_range = fmap(&local, |d| d.date_naive());
-            let formatted_days = iter_days(&day_range)
-                .map(|d| d.format("%F").to_string())
-                .collect::<Vec<_>>()
-                .join("\t");
-            [format!("\t{}", formatted_days)]
-        };
-
         let lines = (0..24).map(move |i| {
-            let hr = (offset_hours + i) as usize;
+            let hr = offset_hours + i;
             let cells = (0..days)
                 .map(|d| {
-                    if slept[(d * 24) as usize + hr] {
+                    if slept[(d * 24) as usize + hr as usize] {
                         "睡眠"
                     } else {
                         ""
@@ -87,26 +79,15 @@ impl SleepTable {
 
         slept
     }
-
-    fn add_sleep(&mut self, s: DateTime<Utc>, e: DateTime<Utc>) {
-        if self.range.contains(&s) || self.range.contains(&e) {
-            self.sleeps.push(s..e);
-        }
-    }
 }
 
-fn get_datetime(dt: Option<&DateMaybeTime>) -> Option<&DateTime<Utc>> {
-    match dt {
-        Some(DateMaybeTime::DateTime(d)) => Some(d),
-        _ => None,
-    }
-}
-
-fn iter_days(day_range: &Range<NaiveDate>) -> impl Iterator<Item = NaiveDate> {
-    day_range
-        .start
+fn make_header(day_range: Range<NaiveDate>) -> String {
+    let formatted_days = day_range
         .iter_days()
-        .take_while(|d| d < &day_range.end)
+        .map(|d| d.format("%F").to_string())
+        .collect::<Vec<_>>()
+        .join("\t");
+    format!("\t{}", formatted_days)
 }
 
 fn last_monday_before<Tz: TimeZone>(day: &DateTime<Tz>) -> DateTime<Tz> {
