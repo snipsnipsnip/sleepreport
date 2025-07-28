@@ -1,9 +1,9 @@
 use anyhow::Context;
-use auto_enums::auto_enum;
 use chrono::{DateTime, Utc};
+use either::{Left, Right};
 use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
-use std::{io::BufRead, ops::Range};
+use std::{io::BufRead, iter, ops::Range};
 
 pub struct SleepLoader;
 
@@ -24,16 +24,15 @@ impl SleepLoader {
     }
 }
 
-#[auto_enum(Iterator)]
 fn extract_sleeps(
     vcal: anyhow::Result<IcalCalendar>,
 ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
     match vcal {
-        Ok(ical) => ical.events.into_iter().map(|ical_event| {
+        Ok(ical) => Left(ical.events.into_iter().map(|ical_event| {
             let ev = ical_event.try_into()?;
             make_sleep_duration(ev).context("extracting duration from ical events")
-        }),
-        Err(e) => [Err(e)].into_iter(),
+        })),
+        Err(e) => Right(iter::once(Err(e))),
     }
 }
 
