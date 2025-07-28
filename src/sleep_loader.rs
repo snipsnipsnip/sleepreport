@@ -1,8 +1,9 @@
 use anyhow::Context;
+use auto_enums::auto_enum;
 use chrono::{DateTime, Utc};
 use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
-use std::{boxed::Box, io::BufRead, ops::Range};
+use std::{io::BufRead, ops::Range};
 
 pub struct SleepLoader;
 
@@ -17,22 +18,22 @@ impl SleepLoader {
     ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
         let parser = IcalParser::new(reader);
 
-        parser.into_iter().flat_map(|vcal| extract_sleeps(vcal))
+        parser
+            .into_iter()
+            .flat_map(|vcal| extract_sleeps(vcal.map_err(anyhow::Error::from)))
     }
 }
 
+#[auto_enum(Iterator)]
 fn extract_sleeps(
-    vcal: Result<IcalCalendar, ical::parser::ParserError>,
-) -> Box<dyn Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>>> {
+    vcal: anyhow::Result<IcalCalendar>,
+) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
     match vcal {
-        Ok(ical) => {
-            let durations = ical.events.into_iter().map(|ical_event| {
-                let ev = ical_event.try_into()?;
-                make_sleep_duration(ev).context("extracting duration from ical events")
-            });
-            Box::new(durations)
-        }
-        Err(e) => Box::new([Err(e.into())].into_iter()),
+        Ok(ical) => ical.events.into_iter().map(|ical_event| {
+            let ev = ical_event.try_into()?;
+            make_sleep_duration(ev).context("extracting duration from ical events")
+        }),
+        Err(e) => [Err(e)].into_iter(),
     }
 }
 
