@@ -28,10 +28,13 @@ fn extract_sleeps(
     vcal: anyhow::Result<IcalCalendar>,
 ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
     match vcal {
-        Ok(ical) => Left(ical.events.into_iter().map(|ical_event| {
-            let ev = ical_event.try_into()?;
-            make_sleep_duration(ev).context("extracting duration from ical events")
-        })),
+        Ok(ical) => {
+            let sleeps = ical.events.into_iter().map(|ical_event| {
+                let ev = ical_event.try_into()?;
+                make_sleep_duration(ev).context("extracting duration from ical events")
+            });
+            Left(sleeps)
+        }
         Err(e) => Right(iter::once(Err(e))),
     }
 }

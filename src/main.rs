@@ -1,10 +1,10 @@
-#![forbid(unsafe_code)]
 mod sleep_loader;
-mod sleep_table;
+mod sleep_reporter;
 mod sleep_tabulator;
 mod util {
     pub(crate) mod native_date_range;
 }
+
 use crate::sleep_loader::SleepLoader;
 use std::fs::File;
 use std::io::BufReader;

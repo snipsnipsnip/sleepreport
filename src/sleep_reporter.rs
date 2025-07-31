@@ -1,14 +1,14 @@
-use crate::util::native_date_range::NaiveDateRange;
+use crate::util::native_date_range::{NaiveDateRange, RangeLike};
 use chrono::{DateTime, Datelike, Days, Duration, NaiveDate, NaiveTime, TimeZone, Utc};
 use std::{fmt::Display, ops::Range};
 
 #[derive(Debug)]
-pub struct SleepTable {
+pub struct SleepReporter {
     range: Range<DateTime<Utc>>,
     sleeps: Vec<Range<DateTime<Utc>>>,
 }
 
-impl SleepTable {
+impl SleepReporter {
     pub fn new(today: DateTime<impl TimeZone>) -> Option<Self> {
         let last_monday = last_monday_before(&today);
         let start = last_monday.with_time(NaiveTime::MIN).single()?;
@@ -39,12 +39,11 @@ impl SleepTable {
 
         let slept = self.collect_sleeps();
 
-        let local = fmap(&self.range, |d| d.with_timezone(tz));
+        let local = self.range.fmap(|d| d.with_timezone(tz));
+        let days = (local.end().clone() - local.start()).num_days();
+        let day_range = local.fmap(|d| d.date_naive());
+        let header = std::iter::once(make_header(day_range));
 
-        let day_range = fmap(&local, |d| d.date_naive());
-        let header = [make_header(day_range)];
-
-        let days = (local.end.clone() - &local.start).num_days();
         let lines = (0..24).map(move |i| {
             let hr = offset_hours + i;
             let cells = (0..days)
@@ -61,7 +60,7 @@ impl SleepTable {
             format!("{:02}:00～{:02}:00\t{}", hr % 24, (hr + 1) % 24, cells)
         });
 
-        header.into_iter().chain(lines.into_iter())
+        header.chain(lines)
     }
 
     fn collect_sleeps(&self) -> Vec<bool> {
@@ -96,8 +95,4 @@ fn last_monday_before<Tz: TimeZone>(day: &DateTime<Tz>) -> DateTime<Tz> {
         x => x,
     };
     day.clone() - Days::new(diff_days as u64)
-}
-
-fn fmap<T, U>(range: &Range<T>, f: impl Fn(&T) -> U) -> Range<U> {
-    f(&range.start)..f(&range.end)
 }
