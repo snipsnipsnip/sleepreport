@@ -5,6 +5,8 @@ use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
 use std::{io::BufRead, iter, ops::Range};
 
+use crate::util::Apply;
+
 pub struct SleepLoader;
 
 impl SleepLoader {
@@ -20,7 +22,7 @@ impl SleepLoader {
 
         parser
             .into_iter()
-            .flat_map(|vcal| extract_sleeps(vcal.map_err(anyhow::Error::from)))
+            .flat_map(|vcal| extract_sleeps(vcal.map_err(|e| e.into())))
     }
 }
 
@@ -28,13 +30,14 @@ fn extract_sleeps(
     vcal: anyhow::Result<IcalCalendar>,
 ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
     match vcal {
-        Ok(ical) => {
-            let sleeps = ical.events.into_iter().map(|ical_event| {
+        Ok(ical) => ical
+            .events
+            .into_iter()
+            .map(|ical_event| {
                 let ev = ical_event.try_into()?;
                 make_sleep_duration(ev).context("extracting duration from ical events")
-            });
-            Left(sleeps)
-        }
+            })
+            .apply(Left),
         Err(e) => Right(iter::once(Err(e))),
     }
 }
