@@ -1,4 +1,4 @@
-use crate::{sleep_reporter::SleepQuery, util::RangeLike};
+use crate::{sleep::SleepQuery, util::RangeLike};
 use chrono::{DateTime, Datelike, Days, Duration, NaiveDate, NaiveTime, TimeZone, Utc};
 use std::ops::Range;
 

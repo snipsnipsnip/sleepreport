@@ -1,5 +1,4 @@
-use crate::sleep_reporter::SleepReporter;
-use crate::sleep_table::SleepTable;
+use crate::sleep::{SleepReporter, SleepTable};
 use anyhow::Context;
 use chrono::{DateTime, Local, Utc};
 use std::ops::Range;
