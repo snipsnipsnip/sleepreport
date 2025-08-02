@@ -1,4 +1,4 @@
-use crate::util::RangeLike;
+use crate::{sleep_reporter::SleepQuery, util::RangeLike};
 use chrono::{DateTime, Datelike, Days, Duration, NaiveDate, NaiveTime, TimeZone, Utc};
 use std::ops::Range;
 
@@ -24,10 +24,11 @@ impl SleepTable {
         }
     }
 
-    pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) {
-        if let Some(slept_indices) = self.map_indices(sleep) {
-            self.slept[slept_indices].fill(true);
-        }
+    pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) -> Option<()> {
+        let slept_indices = self.map_indices(sleep)?;
+        self.slept[slept_indices].fill(true);
+
+        Some(())
     }
 
     fn map_indices(&self, sleep: Range<DateTime<Utc>>) -> Option<Range<usize>> {
@@ -40,12 +41,14 @@ impl SleepTable {
 
         slept_indices.into()
     }
+}
 
-    pub(crate) fn is_sleeping_at(&self, d: i64, hr: i32) -> bool {
+impl SleepQuery for SleepTable {
+    fn is_sleeping_at(&self, d: i64, hr: i32) -> bool {
         self.slept[(d * 24) as usize + hr as usize]
     }
 
-    pub(crate) fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
+    fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
         self.range.fmap(|d| d.with_timezone(tz).date_naive())
     }
 }
