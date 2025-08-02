@@ -9,15 +9,7 @@ pub struct SleepTable {
 }
 
 impl SleepTable {
-    pub fn new(today: DateTime<impl TimeZone>) -> Option<Self> {
-        let last_monday = last_monday_before(&today);
-        let start = last_monday.with_time(NaiveTime::MIN).single()?;
-        let end = start.clone() + Days::new(7) + Duration::hours(23);
-
-        Self::during(start.to_utc()..end.to_utc()).into()
-    }
-
-    pub fn during(range: Range<DateTime<Utc>>) -> Self {
+    pub fn new(range: Range<DateTime<Utc>>) -> Self {
         Self {
             slept: vec![false; (range.end - range.start).num_hours() as usize],
             range: range,
@@ -53,10 +45,3 @@ impl SleepQuery for SleepTable {
     }
 }
 
-fn last_monday_before<Tz: TimeZone>(day: &DateTime<Tz>) -> DateTime<Tz> {
-    let diff_days = match day.weekday().num_days_from_monday() {
-        0 => 7,
-        x => x,
-    };
-    day.clone() - Days::new(diff_days as u64)
-}
