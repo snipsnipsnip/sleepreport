@@ -3,31 +3,38 @@ use chrono::{DateTime, Utc};
 use either::{Left, Right};
 use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
-use std::{io::BufRead, iter, ops::Range};
+use std::{error::Error, io::BufRead, iter, ops::Range};
 
-use crate::util::Apply;
+use crate::{sleep::LoadSleeps, util::Apply};
 
-pub struct SleepLoader;
+pub struct SleepLoader<B> {
+    parser: IcalParser<B>,
+}
 
-impl SleepLoader {
-    pub fn new() -> Self {
-        Self
+impl<B> SleepLoader<B>
+where
+    B: BufRead,
+{
+    pub fn new(reader: B) -> Self {
+        Self {
+            parser: IcalParser::new(reader),
+        }
     }
+}
 
-    pub fn load(
-        &self,
-        reader: impl BufRead,
-    ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
-        let parser = IcalParser::new(reader);
-
-        parser
+impl<B> LoadSleeps for SleepLoader<B>
+where
+    B: BufRead,
+{
+    fn load_sleeps(self) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
+        self.parser
             .into_iter()
-            .flat_map(|vcal| extract_sleeps(vcal.map_err(|e| e.into())))
+            .flat_map(|vcal| extract_sleeps(vcal))
     }
 }
 
 fn extract_sleeps(
-    vcal: anyhow::Result<IcalCalendar>,
+    vcal: Result<IcalCalendar, impl Into<anyhow::Error>>,
 ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
     match vcal {
         Ok(ical) => ical
@@ -38,7 +45,7 @@ fn extract_sleeps(
                 make_sleep_duration(ev).context("extracting duration from ical events")
             })
             .apply(Left),
-        Err(e) => Right(iter::once(Err(e))),
+        Err(e) => Right(iter::once(Err(e.into()))),
     }
 }
 

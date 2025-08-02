@@ -1,3 +1,4 @@
+use crate::sleep::SleepQuery;
 use crate::util::NaiveDateRange;
 use chrono::{NaiveDate, TimeZone};
 use std::iter;
@@ -8,13 +9,11 @@ pub struct SleepReporter<T> {
     table: T,
 }
 
-pub trait SleepQuery {
-    fn is_sleeping_at(&self, d: i64, hr: i32) -> bool;
-    fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate>;
-}
-
-impl<T: SleepQuery> SleepReporter<T> {
-    pub fn new(table: T) -> Self {
+impl<Q> SleepReporter<Q>
+where
+    Q: SleepQuery,
+{
+    pub fn new(table: Q) -> Self {
         Self { table }
     }
 
