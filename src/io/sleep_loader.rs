@@ -1,35 +1,27 @@
+use crate::{app::LoadSleeps, util::Apply};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use either::{Left, Right};
 use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
-use std::{error::Error, io::BufRead, iter, ops::Range};
+use std::{io::BufRead, iter, ops::Range};
 
-use crate::{sleep::LoadSleeps, util::Apply};
+pub struct SleepLoader;
 
-pub struct SleepLoader<B> {
-    parser: IcalParser<B>,
-}
-
-impl<B> SleepLoader<B>
-where
-    B: BufRead,
-{
-    pub fn new(reader: B) -> Self {
-        Self {
-            parser: IcalParser::new(reader),
-        }
+impl SleepLoader {
+    pub fn new() -> Self {
+        Self
     }
 }
 
-impl<B> LoadSleeps for SleepLoader<B>
-where
-    B: BufRead,
-{
-    fn load_sleeps(self) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
-        self.parser
-            .into_iter()
-            .flat_map(|vcal| extract_sleeps(vcal))
+impl LoadSleeps for SleepLoader {
+    type Error = anyhow::Error;
+
+    fn load_sleeps(
+        &self,
+        reader: impl BufRead,
+    ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
+        IcalParser::new(reader).into_iter().flat_map(extract_sleeps)
     }
 }
 

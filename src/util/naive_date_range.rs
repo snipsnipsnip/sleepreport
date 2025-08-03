@@ -1,5 +1,5 @@
 use crate::util::RangeLike;
-use chrono::{NaiveDate, TimeDelta};
+use chrono::NaiveDate;
 use std::ops::Range;
 
 pub trait NaiveDateRange: RangeLike<Item = NaiveDate> {
@@ -9,10 +9,6 @@ pub trait NaiveDateRange: RangeLike<Item = NaiveDate> {
 
     fn num_days(&self) -> i64 {
         self.delta().num_days()
-    }
-
-    fn delta(&self) -> TimeDelta {
-        *self.end() - *self.start()
     }
 }
 

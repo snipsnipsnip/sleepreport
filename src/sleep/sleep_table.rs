@@ -1,5 +1,6 @@
-use crate::{sleep::SleepQuery, util::RangeLike};
-use chrono::{DateTime, Datelike, Days, Duration, NaiveDate, NaiveTime, TimeZone, Utc};
+use crate::app::SleepQuery;
+use crate::util::RangeLike;
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::ops::Range;
 
 #[derive(Debug)]
@@ -44,4 +45,3 @@ impl SleepQuery for SleepTable {
         self.range.fmap(|d| d.with_timezone(tz).date_naive())
     }
 }
-

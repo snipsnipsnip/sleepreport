@@ -1,38 +1,41 @@
-use crate::sleep::SleepQuery;
+use crate::app::{ReportSleeps, SleepQuery};
 use crate::util::NaiveDateRange;
 use chrono::{NaiveDate, TimeZone};
 use std::iter;
-use std::{fmt::Display, ops::Range};
+use std::ops::Range;
 
 #[derive(Debug)]
-pub struct SleepReporter<T> {
-    table: T,
+pub struct SleepReporter<'a, Tz> {
+    offset_hours: i32,
+    timezone: &'a Tz,
 }
 
-impl<Q> SleepReporter<Q>
-where
-    Q: SleepQuery,
-{
-    pub fn new(table: Q) -> Self {
-        Self { table }
-    }
-
-    pub fn build_csv_lines<Tz>(&self, offset_hours: i32, tz: &Tz) -> impl Iterator<Item = String>
-    where
-        Tz: TimeZone,
-        Tz::Offset: Display,
-    {
+impl<'a, Tz> SleepReporter<'a, Tz> {
+    pub fn new(offset_hours: i32, timezone: &'a Tz) -> Self {
         assert!((0..24).contains(&offset_hours));
+        Self {
+            offset_hours,
+            timezone,
+        }
+    }
+}
 
-        let day_range = self.table.day_range_in(tz);
+impl<Tz> ReportSleeps for SleepReporter<'_, Tz>
+where
+    Tz: TimeZone,
+{
+    type SleepReport = String;
+
+    fn report_sleeps(&self, table: impl SleepQuery) -> String {
+        let day_range = table.day_range_in(self.timezone);
         let days = day_range.num_days();
         let header = iter::once(make_header(day_range));
 
         let lines = (0..24).map(move |i| {
-            let hr = offset_hours + i;
+            let hr = self.offset_hours + i;
             let cells = (0..days)
                 .map(|d| {
-                    if self.table.is_sleeping_at(d, hr) {
+                    if table.is_sleeping_at(d, hr) {
                         "睡眠"
                     } else {
                         ""
@@ -44,7 +47,7 @@ where
             format!("{:02}:00～{:02}:00\t{}", hr % 24, (hr + 1) % 24, cells)
         });
 
-        header.chain(lines)
+        header.chain(lines).collect::<Vec<_>>().join("\n")
     }
 }
 
@@ -54,5 +57,5 @@ fn make_header(day_range: Range<NaiveDate>) -> String {
         .map(|d| d.format("%F").to_string())
         .collect::<Vec<_>>()
         .join("\t");
-    format!("\t{}", formatted_days)
+    format!("\t{formatted_days}")
 }
