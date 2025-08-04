@@ -1,10 +1,6 @@
-mod app;
-mod io;
-mod root;
-mod sleep;
-mod util;
+use sleepreport::{app, root};
 
-fn main() -> anyhow::Result<()> {
+pub fn main() -> anyhow::Result<()> {
     let container = root::startup(std::env::args())?;
     let app = app::App::new(container);
 
