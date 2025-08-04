@@ -1,50 +1,53 @@
 use crate::{
-    app::{self, AppDependency},
+    app::{self, AppConfiguration, AppDependency},
     io, sleep,
+    util::Apply as _,
 };
 use anyhow::Context as _;
 use chrono::{DateTime, Datelike, Days, Duration, Local, NaiveTime, TimeZone, Utc};
 use std::{fmt::Display, ops::Range};
 
 struct Startup {
-    date_range: Range<DateTime<Utc>>,
+    opts: app::Opts,
 }
 
-impl AppDependency for Startup {
+struct Dependencies {
+    config: app::AppConfig,
+}
+
+impl AppConfiguration for Startup {
+    fn configure(
+        self,
+        conf: impl FnOnce(app::Opts) -> Option<app::AppConfig>,
+    ) -> Option<impl AppDependency> {
+        Dependencies {
+            config: conf(self.opts)?,
+        }
+        .into()
+    }
+}
+
+impl AppDependency for Dependencies {
     fn load_sleeps(&self) -> impl app::LoadSleeps<Error = impl Into<anyhow::Error>> {
         io::SleepLoader::new()
     }
 
     fn count_sleeps(&self) -> impl app::CountSleeps {
-        sleep::SleepCounter::new(self.date_range.clone())
+        sleep::SleepCounter::new(self.config.show_range.clone())
     }
 
     fn report_sleeps(&self) -> impl app::ReportSleeps<SleepReport = impl Display> {
-        sleep::SleepReporter::new(6, &Local)
+        sleep::SleepReporter::new(self.config.hours_offset, &Local)
     }
 
     fn fetch_ical(&self) -> impl app::FetchIcal<Error = impl Into<anyhow::Error>> {
-        io::IcalFetcher::new()
+        io::IcalFetcher::new(&self.config.calendar_path)
     }
 }
 
-pub fn startup(_argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppDependency> {
-    let date_range = calc_show_range(Local::now()).context("calculating today")?;
-    Ok(Startup { date_range })
-}
-
-fn calc_show_range(today: DateTime<impl TimeZone>) -> Option<Range<DateTime<Utc>>> {
-    let last_monday = last_monday_before(today);
-    let start = last_monday.with_time(NaiveTime::MIN).single()?;
-    let end = start.clone() + Days::new(7) + Duration::hours(23);
-
-    (start.to_utc()..end.to_utc()).into()
-}
-
-fn last_monday_before<Tz: TimeZone>(day: DateTime<Tz>) -> DateTime<Tz> {
-    let diff_days = match day.weekday().num_days_from_monday() {
-        0 => 7,
-        x => x,
-    };
-    day - Days::new(diff_days as u64)
+pub fn startup(argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppConfiguration> {
+    Startup {
+        opts: io::parse_opts(argv)?,
+    }
+    .apply(Ok)
 }

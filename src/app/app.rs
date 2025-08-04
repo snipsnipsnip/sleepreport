@@ -1,11 +1,27 @@
 use super::api::{CountSleeps, FetchIcal, LoadSleeps, ReportSleeps};
-use std::fmt::Display;
+use crate::io::show_range;
+use crate::util::Apply as _;
+use anyhow::Context as _;
+use chrono::{DateTime, Local, NaiveDate, NaiveTime, Utc};
+use std::{fmt::Display, ops::Range};
 
 // use std::env::Args;
-// struct Opts {
-//     calendar_path: Option<String>,
-//     date: Option<NaiveDate>,
-// }
+#[derive(Default)]
+pub struct Opts {
+    pub calendar_path: Option<String>,
+    pub date: Option<NaiveDate>,
+    pub hours_offset: Option<i32>,
+}
+
+pub struct AppConfig {
+    pub calendar_path: String,
+    pub show_range: Range<DateTime<Utc>>,
+    pub hours_offset: i32,
+}
+
+pub trait AppConfiguration {
+    fn configure(self, conf: impl FnOnce(Opts) -> Option<AppConfig>) -> Option<impl AppDependency>;
+}
 
 pub trait AppDependency {
     fn fetch_ical(&self) -> impl FetchIcal<Error = impl Into<anyhow::Error>>;
@@ -15,17 +31,34 @@ pub trait AppDependency {
 }
 
 pub struct App<C> {
-    deps: C,
+    config: C,
 }
 
-impl<C: AppDependency> App<C> {
-    pub fn new(deps: C) -> Self {
-        Self { deps }
+impl<C: AppConfiguration> App<C> {
+    pub fn new(config: C) -> Self {
+        Self { config }
     }
 
     pub fn run(self) -> anyhow::Result<()> {
-        // let opts: Opts = parse_args(std::env::args());
-        let c = self.deps;
+        let c = self
+            .config
+            .configure(|opts| {
+                let d = opts
+                    .date
+                    .and_then(|d| {
+                        d.and_time(NaiveTime::MIN)
+                            .and_local_timezone(Local)
+                            .single()
+                    })
+                    .unwrap_or_else(Local::now);
+                AppConfig {
+                    calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),
+                    show_range: show_range::calc_show_range(d)?,
+                    hours_offset: opts.hours_offset.unwrap_or(6),
+                }
+                .into()
+            })
+            .context("initialization")?;
 
         let sleeps = {
             let fetcher = c.fetch_ical();

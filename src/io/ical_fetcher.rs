@@ -2,18 +2,20 @@ use crate::app::FetchIcal;
 use crate::util::Apply as _;
 use std::{fs::File, io::BufReader};
 
-pub struct IcalFetcher;
+pub struct IcalFetcher<'a> {
+    path: &'a str,
+}
 
-impl IcalFetcher {
-    pub fn new() -> Self {
-        Self
+impl<'a> IcalFetcher<'a> {
+    pub fn new(path: &'a str) -> Self {
+        Self { path }
     }
 }
 
-impl FetchIcal for IcalFetcher {
+impl FetchIcal for IcalFetcher<'_> {
     type Error = anyhow::Error;
 
     fn fetch_ical(&self) -> Result<impl std::io::BufRead, Self::Error> {
-        BufReader::new(File::open("basic.ics")?).apply(Ok)
+        BufReader::new(File::open(self.path)?).apply(Ok)
     }
 }
