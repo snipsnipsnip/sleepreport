@@ -22,6 +22,10 @@ impl AppDependency for Startup {
     fn report_sleeps(&self) -> impl app::ReportSleeps<SleepReport = impl Display> {
         sleep::SleepReporter::new(6, &Local)
     }
+
+    fn fetch_ical(&self) -> impl app::FetchIcal<Error = impl Into<anyhow::Error>> {
+        io::IcalFetcher::new()
+    }
 }
 
 pub fn startup(_argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppDependency> {

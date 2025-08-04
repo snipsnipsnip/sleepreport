@@ -10,6 +10,12 @@ pub trait LoadSleeps {
     ) -> impl Iterator<Item = Result<Range<DateTime<Utc>>, Self::Error>>;
 }
 
+pub trait FetchIcal {
+    type Error;
+
+    fn fetch_ical(&self) -> Result<impl BufRead, Self::Error>;
+}
+
 pub trait CountSleeps {
     fn count_sleeps(self, sleeps: impl Iterator<Item = Range<DateTime<Utc>>>) -> impl SleepQuery;
 }
