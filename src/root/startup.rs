@@ -20,10 +20,7 @@ impl AppConfiguration for Startup {
         self,
         conf: impl FnOnce(app::Opts) -> Option<app::AppConfig>,
     ) -> Option<impl AppDependency> {
-        Dependencies {
-            config: conf(self.opts)?,
-        }
-        .into()
+        conf(self.opts).map(|config| Dependencies { config })
     }
 }
 
@@ -46,8 +43,5 @@ impl AppDependency for Dependencies {
 }
 
 pub fn startup(argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppConfiguration> {
-    Startup {
-        opts: io::parse_opts(argv)?,
-    }
-    .apply(Ok)
+    io::parse_opts(argv).map(|opts| Startup { opts })
 }

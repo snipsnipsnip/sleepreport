@@ -1,8 +1,10 @@
+use anyhow::Context as _;
 use sleepreport::{app, root};
 
 pub fn main() -> anyhow::Result<()> {
-    let container = root::startup(std::env::args())?;
-    let app = app::App::new(container);
+    let config = root::startup(std::env::args())?;
+    let deps = app::configure(config).context("initializing")?;
+    let app = app::App::new(deps);
 
     app.run()
 }

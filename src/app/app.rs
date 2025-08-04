@@ -3,7 +3,10 @@ use crate::io::show_range;
 use crate::util::Apply as _;
 use anyhow::Context as _;
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, Utc};
-use std::{fmt::Display, ops::Range};
+use std::{
+    fmt::Display,
+    ops::{Deref, Range},
+};
 
 #[derive(Default)]
 pub struct Opts {
@@ -22,6 +25,11 @@ pub trait AppConfiguration {
     fn configure(self, conf: impl FnOnce(Opts) -> Option<AppConfig>) -> Option<impl AppDependency>;
 }
 
+pub trait Foo {
+    type Item;
+    fn build(&self) -> Self::Item;
+}
+
 pub trait AppDependency {
     fn fetch_ical(&self) -> impl FetchIcal<Error = impl Into<anyhow::Error>>;
     fn load_sleeps(&self) -> impl LoadSleeps<Error = impl Into<anyhow::Error>>;
@@ -29,35 +37,17 @@ pub trait AppDependency {
     fn report_sleeps(&self) -> impl ReportSleeps<SleepReport = impl Display>;
 }
 
-pub struct App<C> {
-    config: C,
+pub struct App<C: AppDependency> {
+    deps: C,
 }
 
-impl<C: AppConfiguration> App<C> {
-    pub fn new(config: C) -> Self {
-        Self { config }
+impl<C: AppDependency> App<C> {
+    pub fn new(deps: C) -> Self {
+        Self { deps }
     }
 
     pub fn run(self) -> anyhow::Result<()> {
-        let c = self
-            .config
-            .configure(|opts| {
-                let d = opts
-                    .date
-                    .and_then(|d| {
-                        d.and_time(NaiveTime::MIN)
-                            .and_local_timezone(Local)
-                            .single()
-                    })
-                    .unwrap_or_else(Local::now);
-                AppConfig {
-                    calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),
-                    show_range: show_range::calc_show_range(d)?,
-                    hours_offset: opts.hours_offset.unwrap_or(6),
-                }
-                .into()
-            })
-            .context("initializing")?;
+        let c = self.deps;
 
         let sleeps = {
             let fetcher = c.fetch_ical();
@@ -75,4 +65,23 @@ impl<C: AppConfiguration> App<C> {
 
         Ok(())
     }
+}
+
+pub fn configure(conf: impl AppConfiguration) -> Option<impl AppDependency> {
+    conf.configure(|opts| {
+        let d = opts
+            .date
+            .and_then(|d| {
+                d.and_time(NaiveTime::MIN)
+                    .and_local_timezone(Local)
+                    .single()
+            })
+            .unwrap_or_else(Local::now);
+        AppConfig {
+            calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),
+            show_range: show_range::calc_show_range(d)?,
+            hours_offset: opts.hours_offset.unwrap_or(6),
+        }
+        .into()
+    })
 }
