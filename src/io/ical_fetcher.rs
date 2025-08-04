@@ -13,7 +13,7 @@ impl<'a> IcalFetcher<'a> {
 }
 
 impl FetchIcal for IcalFetcher<'_> {
-    type Error = anyhow::Error;
+    type Error = std::io::Error;
 
     fn fetch_ical(&self) -> Result<impl std::io::BufRead, Self::Error> {
         BufReader::new(File::open(self.path)?).apply(Ok)

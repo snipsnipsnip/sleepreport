@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use either::{Left, Right};
 use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
-use std::{io::BufRead, iter, ops::Range};
+use std::{error::Error, io::BufRead, iter, ops::Range};
 
 pub struct SleepLoader;
 
@@ -26,18 +26,18 @@ impl LoadSleeps for SleepLoader {
 }
 
 fn extract_sleeps(
-    vcal: Result<IcalCalendar, impl Into<anyhow::Error>>,
+    vcal: Result<IcalCalendar, impl Error + Send + Sync + 'static>,
 ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
     match vcal {
         Ok(ical) => ical
             .events
             .into_iter()
             .map(|ical_event| {
-                let ev = ical_event.try_into()?;
+                let ev = ical_event.try_into().context("parsing an ical event")?;
                 make_sleep_duration(ev).context("extracting duration from ical events")
             })
             .apply(Left),
-        Err(e) => Right(iter::once(Err(e.into()))),
+        Err(e) => Right(iter::once(Err(e).context("parsing ical file"))),
     }
 }
 

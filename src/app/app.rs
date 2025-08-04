@@ -5,7 +5,6 @@ use anyhow::Context as _;
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, Utc};
 use std::{fmt::Display, ops::Range};
 
-// use std::env::Args;
 #[derive(Default)]
 pub struct Opts {
     pub calendar_path: Option<String>,
@@ -58,7 +57,7 @@ impl<C: AppConfiguration> App<C> {
                 }
                 .into()
             })
-            .context("initialization")?;
+            .context("initializing")?;
 
         let sleeps = {
             let fetcher = c.fetch_ical();

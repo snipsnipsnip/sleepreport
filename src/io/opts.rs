@@ -19,13 +19,18 @@ fn make_getopts() -> Options {
     let mut getopts = Options::new();
     getopts
         .optflag("h", "help", "print this help menu")
-        .optopt("d", "date", "shows biweeks before this date", "YYYY-MM-DD")
-        .optopt("o", "hours-offset", "rotate reports", "0-23")
+        .optopt(
+            "d",
+            "date",
+            "this tool shows a report for the previous week before the week containing this date",
+            "YYYY-MM-DD",
+        )
+        .optopt("o", "hours-offset", "rotate reports by this hour", "0-23")
         .optopt(
             "c",
             "calendar-path",
             "loads from this ical file",
-            "http://... or file path",
+            "file path or https://... <TODO>",
         );
     getopts
 }
