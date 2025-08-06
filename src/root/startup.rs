@@ -1,5 +1,5 @@
 use crate::{
-    app::{self, AppConfiguration, AppDependency},
+    app::{self, AppDependency},
     io, sleep,
     util::Apply as _,
 };
@@ -7,30 +7,11 @@ use anyhow::Context as _;
 use chrono::{DateTime, Datelike, Days, Duration, Local, NaiveTime, TimeZone, Utc};
 use std::{fmt::Display, ops::Range};
 
-/// Holds the raw, unvalidated command-line arguments.
-/// This struct is the initial input to the configuration process.
-struct Startup {
-    opts: app::Opts,
-}
-
 /// Holds the fully resolved dependencies and configuration needed for the application to run.
 /// This struct is the result of the configuration process and acts as the concrete
 /// implementation for the `AppDependency` trait.
 struct Dependencies {
     config: app::AppConfig,
-}
-
-/// Implements the configuration phase.
-/// This implementation takes the raw `Startup` options and a closure to transform them
-/// into the final `Dependencies` struct, bridging the gap between command-line input
-/// and a runnable application state.
-impl AppConfiguration for Startup {
-    fn configure(
-        self,
-        conf: impl FnOnce(app::Opts) -> Option<app::AppConfig>,
-    ) -> Option<impl AppDependency> {
-        conf(self.opts).map(|config| Dependencies { config })
-    }
 }
 
 /// The dependency injection container for the application.
@@ -59,8 +40,10 @@ impl AppDependency for Dependencies {
 }
 
 /// The main entry point for the application's setup phase.
-/// It parses command-line arguments and returns a `Startup` struct, which can then be
-/// configured and run.
-pub fn startup(argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppConfiguration> {
-    io::parse_opts(argv).map(|opts| Startup { opts })
+/// It parses command-line arguments and returns a `Dependencies` struct which can be
+/// used to run the app.
+pub fn startup(argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppDependency> {
+    io::parse_opts(argv)
+        .and_then(app::configure)
+        .map(|config| Dependencies { config })
 }
