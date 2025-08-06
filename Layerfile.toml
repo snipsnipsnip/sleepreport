@@ -1,0 +1,10 @@
+# check me with `https://github.com/Pistonite/layered-crate`
+
+[crate]
+
+[layer]
+app = {depends-on = ["util"]}
+io = {depends-on = ["util", "app"]}
+root = {depends-on = ["util", "app", "io", "sleep"]}
+sleep = {depends-on = ["util", "app"]}
+util = {}

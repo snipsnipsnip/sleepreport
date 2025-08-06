@@ -1,7 +1,8 @@
-use std::ops::Range;
+use std::ops::{Range, Sub};
 
 pub trait RangeLike {
     type Item;
+
     fn start(&self) -> &Self::Item;
     fn end(&self) -> &Self::Item;
 
@@ -15,6 +16,14 @@ pub trait RangeLike {
     {
         self.start() <= other.start() && other.start() < self.end()
             || self.start() <= other.end() && other.end() < self.end()
+    }
+
+    fn delta(&self) -> <Self::Item as Sub>::Output
+    where
+        Self::Item: Copy,
+        Self::Item: Sub<Self::Item>,
+    {
+        *self.end() - *self.start()
     }
 }
 
