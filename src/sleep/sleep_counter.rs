@@ -1,5 +1,6 @@
 use crate::{app, sleep::SleepTable};
 use chrono::{DateTime, Utc};
+use log::warn;
 use std::ops::Range;
 
 /// The concrete implementation of the `CountSleeps` trait.
@@ -25,7 +26,9 @@ impl app::CountSleeps for SleepCounter {
     ) -> impl app::SleepQuery {
         let mut table = SleepTable::new(self.range);
         for sleep in sleeps {
-            table.eat(sleep);
+            if let None = table.eat(sleep.clone()) {
+                warn!("event skipped: {sleep:?}")
+            }
         }
         table
     }
