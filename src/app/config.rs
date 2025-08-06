@@ -29,11 +29,7 @@ pub struct AppConfig {
 pub fn configure(opts: Opts) -> anyhow::Result<AppConfig> {
     let date = opts
         .date
-        .and_then(|d| {
-            d.and_time(NaiveTime::MIN)
-                .and_local_timezone(Local)
-                .single()
-        })
+        .and_then(|d| d.and_time(NaiveTime::MIN).and_local_timezone(Local).single())
         .unwrap_or_else(Local::now);
     AppConfig {
         calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),

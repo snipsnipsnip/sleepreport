@@ -11,10 +11,7 @@ pub trait LoadSleeps {
     /// Takes a `BufRead` source (like a file or network stream) and returns an
     /// iterator of `Result<Range<DateTime<Utc>>, Self::Error>`, where each `Range`
     /// represents a single sleep event.
-    fn load_sleeps(
-        &self,
-        ical: impl BufRead,
-    ) -> impl Iterator<Item = Result<Range<DateTime<Utc>>, Self::Error>>;
+    fn load_sleeps(&self, ical: impl BufRead) -> impl Iterator<Item = Result<Range<DateTime<Utc>>, Self::Error>>;
 }
 
 /// Defines the contract for fetching the iCalendar data.

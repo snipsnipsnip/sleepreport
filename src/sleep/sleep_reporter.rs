@@ -18,10 +18,7 @@ impl<'a, Tz> SleepReporter<'a, Tz> {
     /// `timezone` is used to correctly display the date range in the header.
     pub fn new(offset_hours: i32, timezone: &'a Tz) -> Self {
         assert!((0..24).contains(&offset_hours));
-        Self {
-            offset_hours,
-            timezone,
-        }
+        Self { offset_hours, timezone }
     }
 }
 

@@ -24,10 +24,7 @@ impl LoadSleeps for SleepLoader {
     /// This is the main entry point for this struct. It takes a `BufRead` source,
     /// creates an `IcalParser` from it, and then flat-maps the parsed calendars
     /// into a stream of sleep `Range`s using the `extract_sleeps` function.
-    fn load_sleeps(
-        &self,
-        reader: impl BufRead,
-    ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
+    fn load_sleeps(&self, reader: impl BufRead) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
         IcalParser::new(reader).into_iter().flat_map(extract_sleeps)
     }
 }
