@@ -4,7 +4,10 @@ use anyhow::Context as _;
 use chrono::NaiveDate;
 use getopts::{Matches, Options};
 
-/// Parses command-line arguments into an `Opts` struct.
+/// Parses the command-line arguments provided by the user.
+/// This function is the main entry point for handling user input at the start of the application.
+/// It orchestrates the creation of the option parser, the parsing itself, and the final conversion
+/// into the `Opts` struct.
 pub fn parse_opts(args: impl Iterator<Item = String>) -> anyhow::Result<Opts> {
     let mut args = args;
     let program = args.next().context("missing argv[0]")?;
@@ -16,7 +19,9 @@ pub fn parse_opts(args: impl Iterator<Item = String>) -> anyhow::Result<Opts> {
         .map_err(move |e| e.context(getopts.usage(&format!("Usage: {program} [options]"))))
 }
 
-/// Creates the `getopts::Options` for the application.
+/// Defines the command-line flags and options that the application accepts.
+/// This function uses the `getopts` crate to specify the expected arguments, their names,
+/// and their descriptions, which are used for both parsing and generating help text.
 fn make_getopts() -> Options {
     let mut getopts = Options::new();
     getopts
@@ -37,7 +42,9 @@ fn make_getopts() -> Options {
     getopts
 }
 
-/// Creates an `Opts` struct from the parsed command-line arguments.
+/// Converts the parsed `getopts::Matches` into the application's `Opts` struct.
+/// This function performs validation (e.g., checking for unknown arguments or help requests)
+/// and extracts the values for each option, converting them into the appropriate types.
 fn make_opts(m: Matches) -> Result<Opts, anyhow::Error> {
     anyhow::ensure!(!m.opt_present("help"), "help requested");
     anyhow::ensure!(m.free.is_empty(), "unknown usage");

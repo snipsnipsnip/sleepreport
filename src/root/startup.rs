@@ -1,51 +1,66 @@
-use crate::{app, io, sleep, util::Apply as _};
+use crate::{
+    app::{self, AppConfiguration, AppDependency},
+    io, sleep,
+    util::Apply as _,
+};
 use anyhow::Context as _;
 use chrono::{DateTime, Datelike, Days, Duration, Local, NaiveTime, TimeZone, Utc};
 use std::{fmt::Display, ops::Range};
 
-/// The application's startup configuration.
+/// Holds the raw, unvalidated command-line arguments.
+/// This struct is the initial input to the configuration process.
 struct Startup {
     opts: app::Opts,
 }
 
-/// The application's dependencies.
+/// Holds the fully resolved dependencies and configuration needed for the application to run.
+/// This struct is the result of the configuration process and acts as the concrete
+/// implementation for the `AppDependency` trait.
 struct Dependencies {
     config: app::AppConfig,
 }
 
-impl app::AppConfiguration for Startup {
-    /// Configures the application with the given options.
+/// Implements the configuration phase.
+/// This implementation takes the raw `Startup` options and a closure to transform them
+/// into the final `Dependencies` struct, bridging the gap between command-line input
+/// and a runnable application state.
+impl AppConfiguration for Startup {
     fn configure(
         self,
         conf: impl FnOnce(app::Opts) -> Option<app::AppConfig>,
-    ) -> Option<impl app::AppDependency> {
+    ) -> Option<impl AppDependency> {
         conf(self.opts).map(|config| Dependencies { config })
     }
 }
 
-impl app::AppDependency for Dependencies {
-    /// Returns a loader for sleep data.
+/// The dependency injection container for the application.
+/// This implementation provides the concrete types for the traits required by the `App`.
+/// It wires up the `io` and `sleep` modules to provide the necessary functionality.
+impl AppDependency for Dependencies {
+    /// Provides the concrete implementation for loading sleep data from a source.
     fn load_sleeps(&self) -> impl app::LoadSleeps<Error = impl Into<anyhow::Error>> {
         io::SleepLoader::new()
     }
 
-    /// Returns a counter for sleeps.
+    /// Provides the concrete implementation for processing raw sleep data into a queryable format.
     fn count_sleeps(&self) -> impl app::CountSleeps {
         sleep::SleepCounter::new(self.config.show_range.clone())
     }
 
-    /// Returns a reporter for sleep data.
+    /// Provides the concrete implementation for generating the final, user-facing sleep report.
     fn report_sleeps(&self) -> impl app::ReportSleeps<SleepReport = impl Display> {
         sleep::SleepReporter::new(self.config.hours_offset, &Local)
     }
 
-    /// Returns a fetcher for iCalendar files.
+    /// Provides the concrete implementation for fetching the iCalendar data.
     fn fetch_ical(&self) -> impl app::FetchIcal<Error = impl Into<anyhow::Error>> {
         io::IcalFetcher::new(&self.config.calendar_path)
     }
 }
 
-/// Starts the application.
-pub fn startup(argv: impl Iterator<Item = String>) -> anyhow::Result<impl app::AppConfiguration> {
+/// The main entry point for the application's setup phase.
+/// It parses command-line arguments and returns a `Startup` struct, which can then be
+/// configured and run.
+pub fn startup(argv: impl Iterator<Item = String>) -> anyhow::Result<impl AppConfiguration> {
     io::parse_opts(argv).map(|opts| Startup { opts })
 }

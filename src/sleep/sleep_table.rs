@@ -3,15 +3,20 @@ use crate::util::RangeLike;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::ops::Range;
 
-/// A table of sleep data.
+/// A data structure that represents a time range discretized into hourly slots.
+/// It is used to efficiently check for sleep at any given hour within that range.
 #[derive(Debug)]
 pub struct SleepTable {
+    /// A boolean vector where each element corresponds to a one-hour slot.
+    /// `true` indicates that sleep was recorded during that hour.
     slept: Vec<bool>,
+    /// The overall time range that this table covers.
     range: Range<DateTime<Utc>>,
 }
 
 impl SleepTable {
-    /// Creates a new `SleepTable` for the given date range.
+    /// Creates a new `SleepTable` for a given `DateTime` range.
+    /// The `slept` vector is initialized to `false` for all hours in the range.
     pub fn new(range: Range<DateTime<Utc>>) -> Self {
         Self {
             slept: vec![false; (range.end - range.start).num_hours() as usize],
@@ -19,7 +24,8 @@ impl SleepTable {
         }
     }
 
-    /// Records a sleep period in the table.
+    /// Marks the hours covered by a given sleep `Range` as `true` in the `slept` vector.
+    /// This method effectively "paints" the sleep periods onto the table.
     pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) -> Option<()> {
         let slept_indices = self.map_indices(sleep)?;
         self.slept[slept_indices].fill(true);
@@ -27,7 +33,9 @@ impl SleepTable {
         Some(())
     }
 
-    /// Maps a sleep period to a range of indices in the `slept` vector.
+    /// Converts a `DateTime` range into a range of indices into the `slept` vector.
+    /// It returns `None` if the sleep range does not overlap with the table's range.
+    /// The duration is rounded to the nearest hour.
     fn map_indices(&self, sleep: Range<DateTime<Utc>>) -> Option<Range<usize>> {
         self.range.intersects(&sleep).then_some(())?;
 
@@ -41,12 +49,15 @@ impl SleepTable {
 }
 
 impl SleepQuery for SleepTable {
-    /// Returns whether the user is sleeping at the given time.
+    /// Checks if sleep was recorded at a specific hour on a specific day.
+    /// `d` is the day offset from the start of the table's range.
+    /// `hr` is the hour of the day (0-23).
     fn is_sleeping_at(&self, d: i64, hr: i32) -> bool {
         self.slept[(d * 24) as usize + hr as usize]
     }
 
-    /// Returns the date range of the table in the given timezone.
+    /// Returns the `NaiveDate` range of the table, converted to a specific timezone.
+    /// This is used by the reporter to create the date header.
     fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
         self.range.fmap(|d| d.with_timezone(tz).date_naive())
     }

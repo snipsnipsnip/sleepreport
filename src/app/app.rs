@@ -8,7 +8,9 @@ use std::{
     ops::{Deref, Range},
 };
 
-/// Command-line options for the application.
+/// Represents the raw, unprocessed options parsed directly from command-line arguments.
+/// This struct allows for optional values, which will be resolved into a concrete
+/// `AppConfig` during the configuration phase.
 #[derive(Default)]
 pub struct Opts {
     pub calendar_path: Option<String>,
@@ -16,43 +18,54 @@ pub struct Opts {
     pub hours_offset: Option<i32>,
 }
 
-/// Application configuration.
+/// Holds the fully resolved and validated configuration required for the application to run.
+/// This is created from `Opts` and provides guaranteed values for all settings.
 pub struct AppConfig {
     pub calendar_path: String,
     pub show_range: Range<DateTime<Utc>>,
     pub hours_offset: i32,
 }
 
-/// A trait for configuring the application.
+/// Defines the first stage of the application setup. It provides a mechanism
+/// to transform the raw `Opts` into a fully configured `AppDependency` container.
+/// This trait decouples the `App` from the specifics of how configuration is created.
 pub trait AppConfiguration {
-    /// Configures the application with the given options.
+    /// Takes a closure that contains the logic for converting `Opts` to `AppConfig`,
+    /// returning a ready-to-use dependency container.
     fn configure(self, conf: impl FnOnce(Opts) -> Option<AppConfig>) -> Option<impl AppDependency>;
 }
 
-/// A trait for providing application dependencies.
+/// Defines the contract for the application's dependencies using a trait-based
+/// dependency injection pattern. The `App` is generic over this trait, allowing
+/// for different implementations (e.g., for production or testing).
 pub trait AppDependency {
-    /// Returns a fetcher for iCalendar files.
+    /// Provides the functionality to fetch the raw iCalendar data.
     fn fetch_ical(&self) -> impl FetchIcal<Error = impl Into<anyhow::Error>>;
-    /// Returns a loader for sleep data.
+    /// Provides the functionality to parse the raw iCalendar data into sleep intervals.
     fn load_sleeps(&self) -> impl LoadSleeps<Error = impl Into<anyhow::Error>>;
-    /// Returns a counter for sleeps.
+    /// Provides the functionality to process sleep intervals into a queryable data structure.
     fn count_sleeps(&self) -> impl CountSleeps;
-    /// Returns a reporter for sleep data.
+    /// Provides the functionality to generate the final, user-facing report from the sleep data.
     fn report_sleeps(&self) -> impl ReportSleeps<SleepReport = impl Display>;
 }
 
-/// The main application struct.
+/// The core application runner. It orchestrates the main logic by using the
+/// dependencies provided by the `AppDependency` trait.
 pub struct App<C: AppDependency> {
     deps: C,
 }
 
 impl<C: AppDependency> App<C> {
-    /// Creates a new `App` with the given dependencies.
+    /// Creates a new `App` instance with its required dependencies.
     pub fn new(deps: C) -> Self {
         Self { deps }
     }
 
-    /// Runs the application.
+    /// Executes the main application workflow:
+    /// 1. Fetches the iCalendar data.
+    /// 2. Loads and parses the sleep events.
+    /// 3. Counts and organizes the sleep data into a table.
+    /// 4. Generates and prints the final report.
     pub fn run(self) -> anyhow::Result<()> {
         let c = self.deps;
 
@@ -74,7 +87,9 @@ impl<C: AppDependency> App<C> {
     }
 }
 
-/// Configures the application.
+/// The concrete configuration logic that transforms `Opts` into `AppConfig`.
+/// This function contains the business logic for setting default values and calculating
+/// derived configuration, such as the `show_range`.
 pub fn configure(conf: impl AppConfiguration) -> Option<impl AppDependency> {
     conf.configure(|opts| {
         let d = opts

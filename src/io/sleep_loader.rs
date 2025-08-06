@@ -6,7 +6,9 @@ use ical::{IcalParser, parser::ical::component::IcalCalendar};
 use ical_property::{DateMaybeTime, Event};
 use std::{error::Error, io::BufRead, iter, ops::Range};
 
-/// A loader for sleep data from an iCalendar file.
+/// The concrete implementation of the `LoadSleeps` trait for parsing iCalendar data.
+/// This struct is stateless and provides the logic for converting a raw byte stream
+/// into an iterator of sleep events.
 pub struct SleepLoader;
 
 impl SleepLoader {
@@ -19,7 +21,9 @@ impl SleepLoader {
 impl LoadSleeps for SleepLoader {
     type Error = anyhow::Error;
 
-    /// Loads sleep data from the given iCalendar reader.
+    /// This is the main entry point for this struct. It takes a `BufRead` source,
+    /// creates an `IcalParser` from it, and then flat-maps the parsed calendars
+    /// into a stream of sleep `Range`s using the `extract_sleeps` function.
     fn load_sleeps(
         &self,
         reader: impl BufRead,
@@ -28,7 +32,8 @@ impl LoadSleeps for SleepLoader {
     }
 }
 
-/// Extracts sleep data from an iCalendar.
+/// Processes a single parsed `IcalCalendar` and extracts all valid sleep events from it.
+/// It handles both successful parsing of the calendar and errors that may occur during parsing.
 fn extract_sleeps(
     vcal: Result<IcalCalendar, impl Error + Send + Sync + 'static>,
 ) -> impl Iterator<Item = anyhow::Result<Range<DateTime<Utc>>>> {
@@ -45,13 +50,15 @@ fn extract_sleeps(
     }
 }
 
-/// Creates a sleep duration from an iCalendar event.
+/// Converts a single iCalendar `Event` into a `Range<DateTime<Utc>>` representing the sleep period.
+/// It returns `None` if the event is missing a start or end time.
 fn make_sleep_duration(event: Event) -> Option<Range<DateTime<Utc>>> {
     let [s, e] = [&event.start, &event.end].map(|d| get_datetime(d.as_ref()));
     (*s?..*e?).into()
 }
 
-/// Gets a `DateTime<Utc>` from a `DateMaybeTime`.
+/// A helper function to extract a `DateTime<Utc>` from the `DateMaybeTime` enum used by the `ical` crate.
+/// It returns `None` if the value is not a `DateTime`.
 fn get_datetime(dt: Option<&DateMaybeTime>) -> Option<&DateTime<Utc>> {
     match dt {
         Some(DateMaybeTime::DateTime(d)) => d.into(),
