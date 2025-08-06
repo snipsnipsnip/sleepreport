@@ -6,7 +6,8 @@ pub trait RangeLike {
     fn start(&self) -> &Self::Item;
     fn end(&self) -> &Self::Item;
 
-    fn fmap<T>(&self, f: impl Fn(&Self::Item) -> T) -> Range<T> {
+    fn fmap<T>(&self, f: impl FnMut(&Self::Item) -> T) -> Range<T> {
+        let mut f = f;
         f(self.start())..f(self.end())
     }
 
@@ -20,8 +21,7 @@ pub trait RangeLike {
 
     fn delta(&self) -> <Self::Item as Sub>::Output
     where
-        Self::Item: Copy,
-        Self::Item: Sub<Self::Item>,
+        Self::Item: Copy + Sub,
     {
         *self.end() - *self.start()
     }

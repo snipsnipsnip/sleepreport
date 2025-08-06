@@ -35,7 +35,7 @@ where
     /// The report has a header row with dates and subsequent rows for each hour,
     /// showing "睡眠" if sleep was recorded for that hour.
     fn report_sleeps(&self, table: impl SleepQuery) -> String {
-        let day_range = table.day_range_in(self.timezone);
+        let day_range = table.fmap(move |d| d.with_timezone(self.timezone).date_naive());
         let days = day_range.num_days();
         let header = iter::once(make_header(day_range));
 

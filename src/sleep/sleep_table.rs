@@ -1,7 +1,10 @@
 use crate::app::SleepQuery;
 use crate::util::RangeLike;
 use chrono::{DateTime, Duration, DurationRound, NaiveDate, TimeDelta, TimeZone, Utc};
-use std::ops::Range;
+use std::{
+    cmp::{max, min},
+    ops::Range,
+};
 
 /// A data structure that represents a time range discretized into hourly slots.
 /// It is used to efficiently check for sleep at any given hour within that range.
@@ -24,7 +27,7 @@ impl SleepTable {
         }
     }
 
-    /// Marks the hours covered by a given sleep `Range` as `true` in the `slept` vector.
+    /// Marks the hours covered by a given sleep `Range` as sleeping.
     /// This method effectively "paints" the sleep periods onto the table.
     #[must_use]
     pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) -> Option<()> {
@@ -38,12 +41,15 @@ impl SleepTable {
     /// It returns `None` if the sleep range does not overlap with the table's range.
     /// The duration is rounded to the nearest hour.
     fn map_indices(&self, sleep: Range<DateTime<Utc>>) -> Option<Range<usize>> {
-        self.range.intersects(&sleep).then_some(())?;
+        if !self.intersects(&sleep) {
+            return None;
+        }
 
-        let sleep_start_index = (sleep.start - self.range.start).num_hours() as usize;
+        let sleep_start_index = max(0, (sleep.start - self.start()).num_hours()) as usize;
         let sleep_length_mins = sleep.delta().num_minutes();
         let sleep_length_hours = ((sleep_length_mins + 30) as f32 / 60f32).round() as usize;
-        let slept_indices = sleep_start_index..sleep_start_index + sleep_length_hours;
+        let sleep_end_index = min(self.slept.len(), sleep_start_index + sleep_length_hours);
+        let slept_indices = sleep_start_index..sleep_end_index;
 
         slept_indices.into()
     }
@@ -53,17 +59,12 @@ impl SleepQuery for SleepTable {
     /// Checks if sleep was recorded at a specific `DateTime`.
     /// The time is rounded down to the nearest hour.
     fn is_sleeping_at(&self, hour: &DateTime<Utc>) -> Option<bool> {
-        let dt = hour.duration_round(TimeDelta::hours(1)).ok()?;
+        let rounded_hour = hour.duration_round(TimeDelta::hours(1)).ok()?;
+        let index = Some(rounded_hour - self.start())
+            .filter(|&x| TimeDelta::zero() <= x)
+            .map(|d| d.num_hours() as usize)?;
 
-        let index = (dt - self.range.start).num_hours();
-        (0 <= index).then_some(())?;
-
-        self.slept.get(index as usize).copied()
-    }
-    /// Returns the `NaiveDate` range of the table, converted to a specific timezone.
-    /// This is used by the reporter to create the date header.
-    fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
-        self.range.fmap(|d| d.with_timezone(tz).date_naive())
+        self.slept.get(index).copied()
     }
 }
 

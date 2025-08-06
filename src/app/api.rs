@@ -38,8 +38,6 @@ pub trait CountSleeps {
 /// This trait provides methods to inspect the processed sleep data, which are used
 /// by the reporting module to generate the final output.
 pub trait SleepQuery: RangeLike<Item = DateTime<Utc>> {
-    /// Returns the overall date range covered by the query data, adjusted to a specific timezone.
-    fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate>;
     /// Checks if there was sleep recorded at a specific hour on a specific day.
     /// Minutes and seconds of `hour` will be round.
     fn is_sleeping_at(&self, hour: &DateTime<Utc>) -> Option<bool>;
