@@ -1,7 +1,28 @@
 [package]
-name = "sleepreport"
-version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0"
+name = "sleepreport"
+publish = false
+version = "0.1.0"
+
+[lints.rust]
+non_ascii_idents = "forbid"
+unsafe_code = "forbid"
+unstable_features = "forbid"
+unused_imports = "allow"
+
+[profile.release]
+lto = true
+opt-level = "z"
 
 [dependencies]
-ics = "0.5"
+anyhow = "1.0"
+apply = "0.3.0"
+chrono = "0.4.41"
+either = "1.15.0"
+getopts = "0.2"
+ical = {version = "0.11", default-features = false, features = ["ical"]}
+ical_property = "0.1.3"
+
+[build-dependencies]
+barexp = "1.1.1"
