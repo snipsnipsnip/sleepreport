@@ -8,6 +8,7 @@ use std::{
     ops::{Deref, Range},
 };
 
+/// Command-line options for the application.
 #[derive(Default)]
 pub struct Opts {
     pub calendar_path: Option<String>,
@@ -15,37 +16,43 @@ pub struct Opts {
     pub hours_offset: Option<i32>,
 }
 
+/// Application configuration.
 pub struct AppConfig {
     pub calendar_path: String,
     pub show_range: Range<DateTime<Utc>>,
     pub hours_offset: i32,
 }
 
+/// A trait for configuring the application.
 pub trait AppConfiguration {
+    /// Configures the application with the given options.
     fn configure(self, conf: impl FnOnce(Opts) -> Option<AppConfig>) -> Option<impl AppDependency>;
 }
 
-pub trait Foo {
-    type Item;
-    fn build(&self) -> Self::Item;
-}
-
+/// A trait for providing application dependencies.
 pub trait AppDependency {
+    /// Returns a fetcher for iCalendar files.
     fn fetch_ical(&self) -> impl FetchIcal<Error = impl Into<anyhow::Error>>;
+    /// Returns a loader for sleep data.
     fn load_sleeps(&self) -> impl LoadSleeps<Error = impl Into<anyhow::Error>>;
+    /// Returns a counter for sleeps.
     fn count_sleeps(&self) -> impl CountSleeps;
+    /// Returns a reporter for sleep data.
     fn report_sleeps(&self) -> impl ReportSleeps<SleepReport = impl Display>;
 }
 
+/// The main application struct.
 pub struct App<C: AppDependency> {
     deps: C,
 }
 
 impl<C: AppDependency> App<C> {
+    /// Creates a new `App` with the given dependencies.
     pub fn new(deps: C) -> Self {
         Self { deps }
     }
 
+    /// Runs the application.
     pub fn run(self) -> anyhow::Result<()> {
         let c = self.deps;
 
@@ -67,6 +74,7 @@ impl<C: AppDependency> App<C> {
     }
 }
 
+/// Configures the application.
 pub fn configure(conf: impl AppConfiguration) -> Option<impl AppDependency> {
     conf.configure(|opts| {
         let d = opts

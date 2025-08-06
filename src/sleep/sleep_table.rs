@@ -3,6 +3,7 @@ use crate::util::RangeLike;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::ops::Range;
 
+/// A table of sleep data.
 #[derive(Debug)]
 pub struct SleepTable {
     slept: Vec<bool>,
@@ -10,6 +11,7 @@ pub struct SleepTable {
 }
 
 impl SleepTable {
+    /// Creates a new `SleepTable` for the given date range.
     pub fn new(range: Range<DateTime<Utc>>) -> Self {
         Self {
             slept: vec![false; (range.end - range.start).num_hours() as usize],
@@ -17,6 +19,7 @@ impl SleepTable {
         }
     }
 
+    /// Records a sleep period in the table.
     pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) -> Option<()> {
         let slept_indices = self.map_indices(sleep)?;
         self.slept[slept_indices].fill(true);
@@ -24,6 +27,7 @@ impl SleepTable {
         Some(())
     }
 
+    /// Maps a sleep period to a range of indices in the `slept` vector.
     fn map_indices(&self, sleep: Range<DateTime<Utc>>) -> Option<Range<usize>> {
         self.range.intersects(&sleep).then_some(())?;
 
@@ -37,10 +41,12 @@ impl SleepTable {
 }
 
 impl SleepQuery for SleepTable {
+    /// Returns whether the user is sleeping at the given time.
     fn is_sleeping_at(&self, d: i64, hr: i32) -> bool {
         self.slept[(d * 24) as usize + hr as usize]
     }
 
+    /// Returns the date range of the table in the given timezone.
     fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
         self.range.fmap(|d| d.with_timezone(tz).date_naive())
     }

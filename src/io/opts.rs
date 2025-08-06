@@ -4,6 +4,7 @@ use anyhow::Context as _;
 use chrono::NaiveDate;
 use getopts::{Matches, Options};
 
+/// Parses command-line arguments into an `Opts` struct.
 pub fn parse_opts(args: impl Iterator<Item = String>) -> anyhow::Result<Opts> {
     let mut args = args;
     let program = args.next().context("missing argv[0]")?;
@@ -15,6 +16,7 @@ pub fn parse_opts(args: impl Iterator<Item = String>) -> anyhow::Result<Opts> {
         .map_err(move |e| e.context(getopts.usage(&format!("Usage: {program} [options]"))))
 }
 
+/// Creates the `getopts::Options` for the application.
 fn make_getopts() -> Options {
     let mut getopts = Options::new();
     getopts
@@ -35,6 +37,7 @@ fn make_getopts() -> Options {
     getopts
 }
 
+/// Creates an `Opts` struct from the parsed command-line arguments.
 fn make_opts(m: Matches) -> Result<Opts, anyhow::Error> {
     anyhow::ensure!(!m.opt_present("help"), "help requested");
     anyhow::ensure!(m.free.is_empty(), "unknown usage");
