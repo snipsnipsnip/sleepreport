@@ -19,7 +19,10 @@ impl SleepCounter {
 impl app::CountSleeps for SleepCounter {
     /// This method takes an iterator of sleep events and populates a `SleepTable`.
     /// The `SleepTable` is then returned as a `SleepQuery` trait object, ready for reporting.
-    fn count_sleeps(self, sleeps: impl Iterator<Item = Range<DateTime<Utc>>>) -> impl app::SleepQuery {
+    fn count_sleeps(
+        self,
+        sleeps: impl Iterator<Item = Range<DateTime<Utc>>>,
+    ) -> impl app::SleepQuery {
         let mut table = SleepTable::new(self.range);
         for sleep in sleeps {
             table.eat(sleep);

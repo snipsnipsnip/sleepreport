@@ -1,6 +1,6 @@
 use crate::app::SleepQuery;
 use crate::util::RangeLike;
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Duration, DurationRound, NaiveDate, TimeDelta, TimeZone, Utc};
 use std::ops::Range;
 
 /// A data structure that represents a time range discretized into hourly slots.
@@ -19,16 +19,17 @@ impl SleepTable {
     /// The `slept` vector is initialized to `false` for all hours in the range.
     pub fn new(range: Range<DateTime<Utc>>) -> Self {
         Self {
-            slept: vec![false; (range.end - range.start).num_hours() as usize],
+            slept: vec![false; range.delta().num_hours() as usize],
             range: range,
         }
     }
 
     /// Marks the hours covered by a given sleep `Range` as `true` in the `slept` vector.
     /// This method effectively "paints" the sleep periods onto the table.
+    #[must_use]
     pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) -> Option<()> {
         let slept_indices = self.map_indices(sleep)?;
-        self.slept[slept_indices].fill(true);
+        self.slept.get_mut(slept_indices)?.fill(true);
 
         Some(())
     }
@@ -40,7 +41,7 @@ impl SleepTable {
         self.range.intersects(&sleep).then_some(())?;
 
         let sleep_start_index = (sleep.start - self.range.start).num_hours() as usize;
-        let sleep_length_mins = (sleep.end - sleep.start).num_minutes();
+        let sleep_length_mins = sleep.delta().num_minutes();
         let sleep_length_hours = ((sleep_length_mins + 30) as f32 / 60f32).round() as usize;
         let slept_indices = sleep_start_index..sleep_start_index + sleep_length_hours;
 
@@ -49,16 +50,31 @@ impl SleepTable {
 }
 
 impl SleepQuery for SleepTable {
-    /// Checks if sleep was recorded at a specific hour on a specific day.
-    /// `d` is the day offset from the start of the table's range.
-    /// `hr` is the hour of the day (0-23).
-    fn is_sleeping_at(&self, d: i64, hr: i32) -> bool {
-        self.slept[(d * 24) as usize + hr as usize]
-    }
+    /// Checks if sleep was recorded at a specific `DateTime`.
+    /// The time is rounded down to the nearest hour.
+    fn is_sleeping_at(&self, hour: &DateTime<Utc>) -> Option<bool> {
+        let dt = hour.duration_round(TimeDelta::hours(1)).ok()?;
 
+        let index = (dt - self.range.start).num_hours();
+        (0 <= index).then_some(())?;
+
+        self.slept.get(index as usize).copied()
+    }
     /// Returns the `NaiveDate` range of the table, converted to a specific timezone.
     /// This is used by the reporter to create the date header.
     fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
         self.range.fmap(|d| d.with_timezone(tz).date_naive())
+    }
+}
+
+impl RangeLike for SleepTable {
+    type Item = DateTime<Utc>;
+
+    fn start(&self) -> &Self::Item {
+        self.range.start()
+    }
+
+    fn end(&self) -> &Self::Item {
+        self.range.end()
     }
 }

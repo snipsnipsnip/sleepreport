@@ -1,3 +1,4 @@
+use crate::util::RangeLike;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::{io::BufRead, ops::Range};
 
@@ -36,12 +37,12 @@ pub trait CountSleeps {
 /// Defines the contract for a queryable sleep data structure.
 /// This trait provides methods to inspect the processed sleep data, which are used
 /// by the reporting module to generate the final output.
-pub trait SleepQuery {
+pub trait SleepQuery: RangeLike<Item = DateTime<Utc>> {
     /// Returns the overall date range covered by the query data, adjusted to a specific timezone.
     fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate>;
     /// Checks if there was sleep recorded at a specific hour on a specific day.
-    /// `d` is the day offset from the start of the range, and `hr` is the hour (0-23).
-    fn is_sleeping_at(&self, d: i64, hr: i32) -> bool;
+    /// Minutes and seconds of `hour` will be round.
+    fn is_sleeping_at(&self, hour: &DateTime<Utc>) -> Option<bool>;
 }
 
 /// Defines the contract for generating the final, user-facing sleep report.

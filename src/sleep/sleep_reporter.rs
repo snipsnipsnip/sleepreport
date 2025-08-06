@@ -1,6 +1,6 @@
 use crate::app::{ReportSleeps, SleepQuery};
-use crate::util::NaiveDateRange;
-use chrono::{NaiveDate, TimeZone};
+use crate::util::{NaiveDateRange, RangeLike};
+use chrono::{DateTime, Days, NaiveDate, NaiveTime, TimeDelta, TimeZone, Utc};
 use std::iter;
 use std::ops::Range;
 
@@ -42,13 +42,7 @@ where
         let lines = (0..24).map(move |i| {
             let hr = self.offset_hours + i;
             let cells = (0..days)
-                .map(|d| {
-                    if table.is_sleeping_at(d, hr) {
-                        "睡眠"
-                    } else {
-                        ""
-                    }
-                })
+                .map(|d| show_cell(&table, hr, d))
                 .collect::<Vec<_>>()
                 .join("\t");
 
@@ -56,6 +50,15 @@ where
         });
 
         header.chain(lines).collect::<Vec<_>>().join("\n")
+    }
+}
+
+fn show_cell(table: &impl SleepQuery, hr: i32, d: i64) -> &'static str {
+    let hour = *table.start() + (TimeDelta::days(d) + TimeDelta::hours(hr as i64));
+    match table.is_sleeping_at(&hour) {
+        Some(true) => "睡眠",
+        Some(false) => "",
+        None => "？",
     }
 }
 
