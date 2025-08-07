@@ -89,7 +89,7 @@ impl RangeLike for SleepTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::{Apply as _, IterExt as _, assert_eq};
+    use crate::util::{IterExt as _, assert_eq};
     use std::iter::repeat_n;
 
     #[test]

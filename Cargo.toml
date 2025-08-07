@@ -23,7 +23,6 @@ lto = true
 
 [dependencies]
 anyhow = "1.0"
-apply = "0.3.0"
 chrono = "0.4.41"
 either = "1.15.0"
 env_logger = {version = "0.11.8", default-features = false, features = ["auto-color", "humantime"]}

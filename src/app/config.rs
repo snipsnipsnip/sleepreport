@@ -1,8 +1,8 @@
-use crate::util::Apply as _;
 use crate::{app::AppDependency, io::show_range};
 use anyhow::Context as _;
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, Utc};
 use std::{fmt::Display, ops::Range};
+use tap::Pipe as _;
 
 /// Represents the raw, unprocessed options parsed directly from command-line arguments.
 /// This struct allows for optional values, which will be resolved into a concrete
@@ -36,5 +36,5 @@ pub fn configure(opts: Opts) -> anyhow::Result<AppConfig> {
         show_range: show_range::calc_show_range(date).context("parsing date range")?,
         hours_offset: opts.hours_offset.unwrap_or(6),
     }
-    .apply(Ok)
+    .pipe(Ok)
 }

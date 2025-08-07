@@ -1,4 +1,4 @@
-use crate::{app::LoadSleeps, util::Apply};
+use crate::app::LoadSleeps;
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use either::{Left, Right};

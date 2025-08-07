@@ -1,8 +1,8 @@
 use crate::app::Opts;
-use crate::util::Apply as _;
 use anyhow::Context as _;
 use chrono::NaiveDate;
 use getopts::{Matches, Options};
+use tap::Pipe as _;
 
 /// Parses the command-line arguments provided by the user.
 /// This function is the main entry point for handling user input at the start of the application.
@@ -66,5 +66,5 @@ fn make_opts(m: Matches) -> Result<Opts, anyhow::Error> {
             })
             .transpose()?,
     }
-    .apply(Ok)
+    .pipe(Ok)
 }

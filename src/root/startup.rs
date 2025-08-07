@@ -1,7 +1,6 @@
 use crate::{
     app::{self, AppDependency},
     io, sleep,
-    util::Apply as _,
 };
 use anyhow::Context as _;
 use chrono::{DateTime, Datelike, Days, Duration, Local, NaiveTime, TimeZone, Utc};
