@@ -15,7 +15,7 @@ pub trait AppDependency {
     /// Provides the functionality to parse the raw iCalendar data into sleep intervals.
     fn load_sleeps(&self) -> impl LoadSleeps<Error = impl Into<anyhow::Error>>;
     /// Provides the functionality to process sleep intervals into a queryable data structure.
-    fn count_sleeps(&self) -> impl CountSleeps;
+    fn count_sleeps(&self) -> impl CountSleeps<Error = impl Into<anyhow::Error>>;
     /// Provides the functionality to generate the final, user-facing report from the sleep data.
     fn report_sleeps(&self) -> impl ReportSleeps<SleepReport = impl Display>;
 }
@@ -49,7 +49,10 @@ impl<C: AppDependency> App<C> {
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| e.into())?
         };
-        let table = c.count_sleeps().count_sleeps(sleeps.into_iter());
+        let table = c
+            .count_sleeps()
+            .count_sleeps(sleeps.into_iter())
+            .map_err(|e| e.into())?;
         let report = c.report_sleeps().report_sleeps(table);
 
         println!("{}", report);

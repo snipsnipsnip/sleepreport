@@ -1,33 +1,31 @@
 use crate::app::SleepQuery;
 use crate::util::RangeLike;
-use chrono::{DateTime, Duration, DurationRound, NaiveDate, TimeDelta, TimeZone, Utc};
+use jiff::{Timestamp, Unit};
 use std::ops::Range;
+use tap::Pipe as _;
 
 /// A data structure that represents a time range discretized into hourly slots.
 /// It is used to efficiently check for sleep at any given hour within that range.
 #[derive(Debug)]
 pub struct SleepTable {
-    /// A boolean vector where each element corresponds to a one-hour slot.
-    /// `true` indicates that sleep was recorded during that hour.
-    slept: Vec<bool>,
     /// The overall time range that this table covers.
-    range: Range<DateTime<Utc>>,
+    range: Range<Timestamp>,
+    /// A bool array where each element corresponds to a one-hour slot.
+    /// `true` indicates that sleep was recorded during that hour.
+    slept: Box<[bool]>,
 }
 
 impl SleepTable {
     /// Creates a new `SleepTable` for a given `DateTime` range.
-    /// The `slept` vector is initialized to `false` for all hours in the range.
-    pub fn new(range: Range<DateTime<Utc>>) -> Self {
-        Self {
-            slept: vec![false; range.delta().num_hours() as usize],
-            range: range,
-        }
+    pub fn new(range: Range<Timestamp>) -> Result<Self, jiff::Error> {
+        let slept = vec![false; range.delta().total(Unit::Hour)? as usize].into();
+        Self { slept, range }.pipe(Ok)
     }
 
-    /// Marks the hours covered by a given sleep `Range` as `true` in the `slept` vector.
+    /// Marks the hours covered by a given sleep `Range` as sleeping.
     /// This method effectively "paints" the sleep periods onto the table.
     #[must_use]
-    pub fn eat(&mut self, sleep: Range<DateTime<Utc>>) -> Option<()> {
+    pub fn eat(&mut self, sleep: Range<Timestamp>) -> Option<()> {
         let slept_indices = self.map_indices(sleep)?;
         self.slept.get_mut(slept_indices)?.fill(true);
 
@@ -37,38 +35,46 @@ impl SleepTable {
     /// Converts a `DateTime` range into a range of indices into the `slept` vector.
     /// It returns `None` if the sleep range does not overlap with the table's range.
     /// The duration is rounded to the nearest hour.
-    fn map_indices(&self, sleep: Range<DateTime<Utc>>) -> Option<Range<usize>> {
-        self.range.intersects(&sleep).then_some(())?;
+    fn map_indices(&self, sleep: Range<Timestamp>) -> Option<Range<usize>> {
+        if !self.intersects(&sleep) {
+            return None;
+        }
 
-        let sleep_start_index = (sleep.start - self.range.start).num_hours() as usize;
-        let sleep_length_mins = sleep.delta().num_minutes();
-        let sleep_length_hours = ((sleep_length_mins + 30) as f32 / 60f32).round() as usize;
-        let slept_indices = sleep_start_index..sleep_start_index + sleep_length_hours;
+        let Range { start, end } = sleep.fmap(move |&t| self.index_at(t));
+        if start == end {
+            return None;
+        }
 
-        slept_indices.into()
+        Range {
+            start: start.unwrap_or(0),
+            end: end.unwrap_or(self.slept.len()),
+        }
+        .into()
+    }
+
+    /// Converts a `DateTime` into an index of the `slept` vector.
+    /// Returns `None` if out of range.
+    fn index_at(&self, hour: Timestamp) -> Option<usize> {
+        Some(hour - *self.start())
+            .and_then(|span| span.total(Unit::Hour).ok())
+            .filter(|&hours| 0.0 <= hours)
+            .map(|hours| hours.round() as usize)
+            .filter(move |&i| i < self.slept.len())
     }
 }
 
 impl SleepQuery for SleepTable {
     /// Checks if sleep was recorded at a specific `DateTime`.
     /// The time is rounded down to the nearest hour.
-    fn is_sleeping_at(&self, hour: &DateTime<Utc>) -> Option<bool> {
-        let dt = hour.duration_round(TimeDelta::hours(1)).ok()?;
+    fn is_sleeping_at(&self, hour: Timestamp) -> Option<bool> {
+        let index = self.index_at(hour)?;
 
-        let index = (dt - self.range.start).num_hours();
-        (0 <= index).then_some(())?;
-
-        self.slept.get(index as usize).copied()
-    }
-    /// Returns the `NaiveDate` range of the table, converted to a specific timezone.
-    /// This is used by the reporter to create the date header.
-    fn day_range_in(&self, tz: &impl TimeZone) -> Range<NaiveDate> {
-        self.range.fmap(|d| d.with_timezone(tz).date_naive())
+        self.slept.get(index).copied()
     }
 }
 
 impl RangeLike for SleepTable {
-    type Item = DateTime<Utc>;
+    type Item = Timestamp;
 
     fn start(&self) -> &Self::Item {
         self.range.start()
@@ -76,5 +82,57 @@ impl RangeLike for SleepTable {
 
     fn end(&self) -> &Self::Item {
         self.range.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::{IterExt as _, assert_eq};
+    use jiff::{
+        ToSpan as _,
+        civil::{Date, DateTime, Time},
+        tz::TimeZone,
+    };
+    use std::iter::repeat_n;
+    use tap::Pipe as _;
+
+    #[test]
+    fn test_is_sleeping_at() -> anyhow::Result<()> {
+        let start_time = utc_timestamp(Date::constant(2024, 1, 1))?;
+        let end_time = utc_timestamp(Date::constant(2024, 1, 2))?;
+        let range = start_time..end_time;
+        let mut table = SleepTable::new(range)?;
+
+        assert_eq!(
+            (-1..=24)
+                .map(|hr: i64| table.is_sleeping_at(start_time + (60 * hr).minutes()))
+                .into_vec(),
+            repeat_n(None, 1)
+                .chain(repeat_n(Some(false), 24))
+                .chain(repeat_n(None, 1))
+                .into_vec()
+        );
+
+        let sleep_time = (start_time + (60 * 1).minutes())..(start_time + (60 * 2 + 30).minutes());
+        assert_eq!(table.eat(sleep_time), Some(()));
+
+        assert_eq!(
+            (-1..=24)
+                .map(|hr: i64| table.is_sleeping_at(start_time + (60 * hr).minutes()))
+                .into_vec(),
+            repeat_n(None, 1)
+                .chain(repeat_n(Some(false), 1))
+                .chain(repeat_n(Some(true), 2))
+                .chain(repeat_n(Some(false), 21))
+                .chain(repeat_n(None, 1))
+                .into_vec()
+        );
+
+        Ok(())
+    }
+
+    fn utc_timestamp(date: Date) -> Result<Timestamp, jiff::Error> {
+        TimeZone::UTC.to_timestamp(date.to_datetime(Time::default()))
     }
 }

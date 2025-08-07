@@ -1,10 +1,10 @@
 use crate::{
     app::{self, AppDependency},
-    io, sleep,
-    util::Apply as _,
+    io,
+    sleep::{self, SleepReporterConfig},
 };
 use anyhow::Context as _;
-use chrono::{DateTime, Datelike, Days, Duration, Local, NaiveTime, TimeZone, Utc};
+use jiff::civil::Date;
 use std::{fmt::Display, ops::Range};
 
 /// Holds the fully resolved dependencies and configuration needed for the application to run.
@@ -24,18 +24,28 @@ impl AppDependency for Dependencies {
     }
 
     /// Provides the concrete implementation for processing raw sleep data into a queryable format.
-    fn count_sleeps(&self) -> impl app::CountSleeps {
+    fn count_sleeps(&self) -> impl app::CountSleeps<Error = impl Into<anyhow::Error>> {
         sleep::SleepCounter::new(self.config.show_range.clone())
     }
 
     /// Provides the concrete implementation for generating the final, user-facing sleep report.
     fn report_sleeps(&self) -> impl app::ReportSleeps<SleepReport = impl Display> {
-        sleep::SleepReporter::new(self.config.hours_offset, &Local)
+        sleep::SleepReporter::new(self)
     }
 
     /// Provides the concrete implementation for fetching the iCalendar data.
     fn fetch_ical(&self) -> impl app::FetchIcal<Error = impl Into<anyhow::Error>> {
         io::IcalFetcher::new(&self.config.calendar_path)
+    }
+}
+
+impl SleepReporterConfig for Dependencies {
+    fn report_range(&self) -> Range<Date> {
+        self.config.show_range.clone()
+    }
+
+    fn offset_hours(&self) -> i32 {
+        self.config.offset_hours
     }
 }
 
