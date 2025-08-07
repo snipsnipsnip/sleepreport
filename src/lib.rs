@@ -29,6 +29,7 @@
 //!     d.  **Report:** The `SleepReporter` takes the `SleepTable` and generates the final, formatted string report, which is then printed to the console.
 
 pub mod app;
+pub mod config;
 pub mod io;
 pub mod root;
 pub mod sleep;

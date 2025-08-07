@@ -8,7 +8,7 @@ use std::ops::Range;
 /// The concrete implementation of the `ReportSleeps` trait.
 /// This struct generates a tab-separated string representation of the sleep data.
 #[derive(Debug)]
-pub struct SleepReporter {
+pub struct TsvSleepReporter {
     report_range: Range<Date>,
     offset_hours: i32,
 }
@@ -18,7 +18,7 @@ pub trait SleepReporterConfig {
     fn offset_hours(&self) -> i32;
 }
 
-impl SleepReporter {
+impl TsvSleepReporter {
     /// Creates a new `SleepReporter`.
     /// `offset_hours` is used to rotate the 24-hour clock in the report.
     pub fn new(config: &impl SleepReporterConfig) -> Self {
@@ -30,13 +30,13 @@ impl SleepReporter {
     }
 }
 
-impl ReportSleeps for SleepReporter {
+impl ReportSleeps for TsvSleepReporter {
     type SleepReport = String;
 
     /// Generates a multi-line string report from a `SleepQuery` object.
     /// The report has a header row with dates and subsequent rows for each hour,
     /// showing "睡眠" if sleep was recorded for that hour.
-    fn report_sleeps(&self, table: impl SleepQuery) -> String {
+    fn report_sleeps(&self, table: impl SleepQuery) -> Self::SleepReport {
         let days = self.report_range.num_days();
         let header = iter::once(make_header(&self.report_range));
 

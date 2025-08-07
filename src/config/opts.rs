@@ -1,7 +1,17 @@
-use crate::app::Opts;
 use anyhow::Context as _;
 use getopts::{Matches, Options};
+use jiff::civil::Date;
 use tap::Pipe as _;
+
+/// Represents the raw, unprocessed options parsed directly from command-line arguments.
+/// This struct allows for optional values, which will be resolved into a concrete
+/// `AppConfig` during the configuration phase.
+#[derive(Default, Debug)]
+pub struct Opts {
+    pub calendar_path: Option<String>,
+    pub date: Option<Date>,
+    pub offset_hours: Option<i32>,
+}
 
 /// Parses the command-line arguments provided by the user.
 /// This function is the main entry point for handling user input at the start of the application.
