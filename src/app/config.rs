@@ -1,7 +1,7 @@
-use crate::{app::AppDependency, io::show_range};
 use anyhow::Context as _;
-use chrono::{DateTime, Local, NaiveDate, NaiveTime, Utc};
-use std::{fmt::Display, ops::Range};
+use crate::io::show_range;
+use jiff::{Zoned, civil::Date};
+use std::ops::Range;
 use tap::Pipe as _;
 
 /// Represents the raw, unprocessed options parsed directly from command-line arguments.
@@ -10,8 +10,8 @@ use tap::Pipe as _;
 #[derive(Default, Debug)]
 pub struct Opts {
     pub calendar_path: Option<String>,
-    pub date: Option<NaiveDate>,
-    pub hours_offset: Option<i32>,
+    pub date: Option<Date>,
+    pub offset_hours: Option<i32>,
 }
 
 /// Holds the fully resolved and validated configuration required for the application to run.
@@ -19,22 +19,18 @@ pub struct Opts {
 #[derive(Debug)]
 pub struct AppConfig {
     pub calendar_path: String,
-    pub show_range: Range<DateTime<Utc>>,
-    pub hours_offset: i32,
+    pub show_range: Range<Date>,
+    pub offset_hours: i32,
 }
 
 /// The concrete configuration logic that transforms `Opts` into `AppConfig`.
 /// This function contains the business logic for setting default values and calculating
 /// derived configuration, such as the `show_range`.
 pub fn configure(opts: Opts) -> anyhow::Result<AppConfig> {
-    let date = opts
-        .date
-        .and_then(|d| d.and_time(NaiveTime::MIN).and_local_timezone(Local).single())
-        .unwrap_or_else(Local::now);
     AppConfig {
         calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),
-        show_range: show_range::calc_show_range(date).context("parsing date range")?,
-        hours_offset: opts.hours_offset.unwrap_or(6),
+        show_range: show_range::calc_show_range(opts.date.unwrap_or_else(|| Zoned::now().date())),
+        offset_hours: opts.offset_hours.unwrap_or(6),
     }
     .pipe(Ok)
 }

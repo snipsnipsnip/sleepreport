@@ -1,24 +1,23 @@
-use chrono::{DateTime, Datelike, Days, Duration, NaiveTime, TimeZone, Utc};
+use jiff::{ToSpan as _, civil::Date};
 use std::ops::Range;
 
 /// Calculates the 7-day report range based on a given date.
 /// The calculated range always starts on a Monday and covers a full week.
 /// Specifically, it finds the Monday of the week *before* the week containing `today`.
 /// The final range spans from that Monday to the following Sunday, inclusive.
-pub fn calc_show_range(today: DateTime<impl TimeZone>) -> Option<Range<DateTime<Utc>>> {
-    let today_zero = today.with_time(NaiveTime::MIN).single()?;
-    let start = last_monday_before(today_zero);
-    let end = start.clone() + Days::new(7) + Duration::hours(23);
+pub fn calc_show_range(today: Date) -> Range<Date> {
+    let start_day = last_monday_before(today);
+    let end_day = start_day.clone() + 7.days();
 
-    (start.to_utc()..end.to_utc()).into()
+    (start_day..end_day).into()
 }
 
 /// Helper function to find the most recent Monday that occurred before the given `day`.
 /// If the given `day` is a Monday, it will return the Monday of the previous week.
-fn last_monday_before<Tz: TimeZone>(day: DateTime<Tz>) -> DateTime<Tz> {
-    let diff_days = match day.weekday().num_days_from_monday() {
-        0 => 7, // If it's already Monday, go back a full week.
-        x => x, // Otherwise, go back `x` days to get to the previous Monday.
+fn last_monday_before(day: Date) -> Date {
+    let diff_days = match day.weekday().to_monday_zero_offset() {
+        0 => 7.days(), // If it's already Monday, go back a full week.
+        x => x.days(), // Otherwise, go back `x` days to get to the previous Monday.
     };
-    day - Days::new(diff_days as u64)
+    day - diff_days
 }

@@ -1,6 +1,5 @@
 use crate::app::Opts;
 use anyhow::Context as _;
-use chrono::NaiveDate;
 use getopts::{Matches, Options};
 use tap::Pipe as _;
 
@@ -32,7 +31,7 @@ fn make_getopts() -> Options {
             "this tool shows a report for the previous week before the week containing this date",
             "YYYY-MM-DD",
         )
-        .optopt("o", "hours-offset", "rotate reports by this hour", "0-23")
+        .optopt("o", "offset-hours", "rotate reports by this hours", "0-23")
         .optopt(
             "c",
             "calendar-path",
@@ -53,11 +52,11 @@ fn make_opts(m: Matches) -> Result<Opts, anyhow::Error> {
         calendar_path: m.opt_str("calendar-path"),
         date: m
             .opt_str("date")
-            .map(|s| NaiveDate::parse_from_str(&s, "%F"))
+            .map(|s| s.parse())
             .transpose()
             .context("parsing the date option")?,
-        hours_offset: m
-            .opt_get::<i32>("hours-offset")
+        offset_hours: m
+            .opt_get::<i32>("offset-hours")
             .context("parsing the offset number")?
             .map(|n| {
                 Some(n)
