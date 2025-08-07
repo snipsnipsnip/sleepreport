@@ -38,3 +38,34 @@ impl<T> RangeLike for Range<T> {
         &self.end
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::assert_eq;
+
+    #[test]
+    fn test_fmap() {
+        let range = 5..10;
+        let new_range = range.fmap(|x| x * 2);
+        assert_eq!(new_range, 10..20);
+    }
+
+    #[test]
+    fn test_intersects() {
+        let range1 = 5..10;
+        let range2 = 8..12;
+        let range3 = 1..4;
+        let range4 = 10..15;
+
+        assert!(range1.intersects(&range2));
+        assert!(!range1.intersects(&range3));
+        assert!(!range1.intersects(&range4));
+    }
+
+    #[test]
+    fn test_delta() {
+        let range = 5..10;
+        assert_eq!(range.delta(), 5);
+    }
+}

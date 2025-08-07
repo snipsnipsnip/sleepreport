@@ -10,7 +10,7 @@ pub trait LoadSleeps {
 
     /// Takes a `BufRead` source (like a file or network stream) and returns an
     /// iterator of `Result<Range<DateTime<Utc>>, Self::Error>`, where each `Range`
-    /// represents a single sleep event.
+    /// represents a single sleep event. Parsing may fail which results in `Err` side.
     fn load_sleeps(&self, ical: impl BufRead) -> impl Iterator<Item = Result<Range<DateTime<Utc>>, Self::Error>>;
 }
 
@@ -37,7 +37,7 @@ pub trait CountSleeps {
 pub trait SleepQuery: RangeLike<Item = DateTime<Utc>> {
     /// Checks if there was sleep recorded at a specific hour on a specific day.
     /// Minutes and seconds of `hour` will be round.
-    fn is_sleeping_at(&self, hour: &DateTime<Utc>) -> Option<bool>;
+    fn is_sleeping_at(&self, hour: DateTime<Utc>) -> Option<bool>;
 }
 
 /// Defines the contract for generating the final, user-facing sleep report.

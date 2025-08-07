@@ -1,5 +1,5 @@
 use crate::app::{ReportSleeps, SleepQuery};
-use crate::util::{NaiveDateRange, RangeLike};
+use crate::util::{IterExt as _, NaiveDateRange, RangeLike};
 use chrono::{DateTime, Days, NaiveDate, NaiveTime, TimeDelta, TimeZone, Utc};
 use std::iter;
 use std::ops::Range;
@@ -38,21 +38,18 @@ where
 
         let lines = (0..24).map(move |i| {
             let hr = self.offset_hours + i;
-            let cells = (0..days)
-                .map(|d| show_cell(&table, hr, d))
-                .collect::<Vec<_>>()
-                .join("\t");
+            let cells = (0..days).map(|d| show_cell(&table, hr, d)).into_vec().join("\t");
 
             format!("{:02}:00～{:02}:00\t{}", hr % 24, (hr + 1) % 24, cells)
         });
 
-        header.chain(lines).collect::<Vec<_>>().join("\n")
+        header.chain(lines).into_vec().join("\n")
     }
 }
 
 fn show_cell(table: &impl SleepQuery, hr: i32, d: i64) -> &'static str {
     let hour = *table.start() + (TimeDelta::days(d) + TimeDelta::hours(hr as i64));
-    match table.is_sleeping_at(&hour) {
+    match table.is_sleeping_at(hour) {
         Some(true) => "睡眠",
         Some(false) => "",
         None => "？",
@@ -64,7 +61,7 @@ fn make_header(day_range: Range<NaiveDate>) -> String {
     let formatted_days = day_range
         .iter_days()
         .map(|d| d.format("%F").to_string())
-        .collect::<Vec<_>>()
+        .into_vec()
         .join("\t");
     format!("\t{formatted_days}")
 }

@@ -6,8 +6,8 @@ use std::ops::Range;
 /// Specifically, it finds the Monday of the week *before* the week containing `today`.
 /// The final range spans from that Monday to the following Sunday, inclusive.
 pub fn calc_show_range(today: DateTime<impl TimeZone>) -> Option<Range<DateTime<Utc>>> {
-    let last_monday = last_monday_before(today);
-    let start = last_monday.with_time(NaiveTime::MIN).single()?;
+    let today_zero = today.with_time(NaiveTime::MIN).single()?;
+    let start = last_monday_before(today_zero);
     let end = start.clone() + Days::new(7) + Duration::hours(23);
 
     (start.to_utc()..end.to_utc()).into()
