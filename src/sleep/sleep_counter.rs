@@ -1,4 +1,4 @@
-use crate::{app, sleep::SleepTable, util::RangeLike as _};
+use crate::{app, sleep::SleepTable, util::RangeExt as _};
 use jiff::{Timestamp, ToSpan as _, civil::Date, tz::TimeZone};
 use log::warn;
 use std::ops::Range;
@@ -26,10 +26,10 @@ impl app::CountSleeps for SleepCounter {
         let tz = TimeZone::system();
         let Range { start, end } = self
             .range
-            .fmap(move |d| tz.to_timestamp(d.to_datetime(Default::default())));
+            .try_fmap(move |d| tz.to_timestamp(d.to_datetime(Default::default())))?;
 
         // Count for an extra day to prepare for the offset hours
-        let mut table = SleepTable::new(start?..end? + 24.hours())?;
+        let mut table = SleepTable::new(start..end + 24.hours())?;
         for sleep in sleeps {
             if let None = table.eat(sleep.clone()) {
                 warn!("event skipped: {sleep:?}")

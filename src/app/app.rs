@@ -1,4 +1,5 @@
 use super::api::{CountSleeps, FetchIcal, LoadSleeps, ReportSleeps};
+use crate::util::IterExt as _;
 use anyhow::Context as _;
 use std::fmt::Display;
 
@@ -44,10 +45,7 @@ impl<C: AppDependency> App<C> {
             let fetcher = c.fetch_ical();
             let buf = fetcher.fetch_ical().map_err(|e| e.into())?;
 
-            c.load_sleeps()
-                .load_sleeps(buf)
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.into())?
+            c.load_sleeps().load_sleeps(buf).into_try_vec().map_err(|e| e.into())?
         };
         let table = c
             .count_sleeps()

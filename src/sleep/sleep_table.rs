@@ -1,5 +1,5 @@
 use crate::app::SleepQuery;
-use crate::util::RangeLike;
+use crate::util::RangeExt as _;
 use jiff::{Timestamp, Unit};
 use std::ops::Range;
 use tap::Pipe as _;
@@ -36,11 +36,11 @@ impl SleepTable {
     /// It returns `None` if the sleep range does not overlap with the table's range.
     /// The duration is rounded to the nearest hour.
     fn map_indices(&self, sleep: Range<Timestamp>) -> Option<Range<usize>> {
-        if !self.intersects(&sleep) {
+        if !self.range.intersects(&sleep) {
             return None;
         }
 
-        let Range { start, end } = sleep.fmap(move |&t| self.index_at(t));
+        let Range { start, end } = sleep.fmap(move |t| self.index_at(t));
         if start == end {
             return None;
         }
@@ -55,7 +55,7 @@ impl SleepTable {
     /// Converts a `DateTime` into an index of the `slept` vector.
     /// Returns `None` if out of range.
     fn index_at(&self, hour: Timestamp) -> Option<usize> {
-        Some(hour - *self.start())
+        Some(hour - self.range.start)
             .and_then(|span| span.total(Unit::Hour).ok())
             .filter(|&hours| 0.0 <= hours)
             .map(|hours| hours.round() as usize)
@@ -71,17 +71,9 @@ impl SleepQuery for SleepTable {
 
         self.slept.get(index).copied()
     }
-}
 
-impl RangeLike for SleepTable {
-    type Item = Timestamp;
-
-    fn start(&self) -> &Self::Item {
-        self.range.start()
-    }
-
-    fn end(&self) -> &Self::Item {
-        self.range.end()
+    fn query_range(&self) -> &Range<Timestamp> {
+        &self.range
     }
 }
 
@@ -91,7 +83,7 @@ mod tests {
     use crate::util::{IterExt as _, assert_eq};
     use jiff::{
         ToSpan as _,
-        civil::{Date, DateTime, Time},
+        civil::{Date, DateTime, Time, date},
         tz::TimeZone,
     };
     use std::iter::repeat_n;
@@ -99,8 +91,8 @@ mod tests {
 
     #[test]
     fn test_is_sleeping_at() -> anyhow::Result<()> {
-        let start_time = utc_timestamp(Date::constant(2024, 1, 1))?;
-        let end_time = utc_timestamp(Date::constant(2024, 1, 2))?;
+        let start_time = utc_timestamp(date(2024, 1, 1))?;
+        let end_time = utc_timestamp(date(2024, 1, 2))?;
         let range = start_time..end_time;
         let mut table = SleepTable::new(range)?;
 

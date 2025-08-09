@@ -52,7 +52,7 @@ impl ReportSleeps for TsvSleepReporter {
 }
 
 fn show_cell(table: &impl SleepQuery, hr: i32, d: i32) -> &'static str {
-    let hour = *table.start() + (d * 24 + hr).hours();
+    let hour = table.query_range().start + (d * 24 + hr).hours();
     match table.is_sleeping_at(hour) {
         Some(true) => "睡眠",
         Some(false) => "",
