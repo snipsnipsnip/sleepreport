@@ -4,7 +4,7 @@ use crate::{
     sleep::{self, Hour, SleepReporterConfig},
 };
 use anyhow::Context as _;
-use jiff::civil::Date;
+use jiff::{civil::Date, tz::TimeZone};
 use std::{fmt::Display, ops::Range};
 use tap::Pipe as _;
 
@@ -30,7 +30,7 @@ impl AppDependency for Dependencies {
     }
 
     /// Provides the concrete implementation for generating the final, user-facing sleep report.
-    fn report_sleeps(&self) -> impl app::ReportSleeps<SleepReport = impl Display> {
+    fn report_sleeps(&self) -> impl app::ReportSleeps<SleepReport = impl Display, Error = impl Into<anyhow::Error>> {
         sleep::TsvSleepReporter::new(self)
     }
 
@@ -47,6 +47,10 @@ impl SleepReporterConfig for Dependencies {
 
     fn offset_hours(&self) -> Hour {
         Hour::new(self.config.offset_hours.try_into().unwrap())
+    }
+
+    fn timezone(&self) -> TimeZone {
+        TimeZone::system()
     }
 }
 

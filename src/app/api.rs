@@ -49,7 +49,8 @@ pub trait SleepQuery {
 /// This abstracts the presentation logic.
 pub trait ReportSleeps {
     type SleepReport;
+    type Error;
 
     /// Takes a `SleepQuery` object and produces a `SleepReport`, which is typically a formatted string.
-    fn report_sleeps(&self, query: impl SleepQuery) -> Self::SleepReport;
+    fn report_sleeps(&self, query: impl SleepQuery) -> Result<Self::SleepReport, Self::Error>;
 }
