@@ -29,6 +29,7 @@ getopts = "0.2"
 ical = {version = "0.11", default-features = false, features = ["ical"]}
 ical_property = "0.1.3"
 jiff = {version = "0.2.15", default-features = true, features = ["logging"]}
+light_ranged_integers = "0.1.3"
 log = {version = "0.4", default-features = false, features = ["std"]}
 tap = "1.0.1"
 

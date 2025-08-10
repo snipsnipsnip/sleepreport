@@ -5,24 +5,25 @@ use jiff::civil::Date;
 use std::iter;
 use std::ops::Range;
 
+pub type Hour = light_ranged_integers::RangedU8<0, 23>;
+
 /// The concrete implementation of the `ReportSleeps` trait.
 /// This struct generates a tab-separated string representation of the sleep data.
 #[derive(Debug)]
 pub struct TsvSleepReporter {
     report_range: Range<Date>,
-    offset_hours: i32,
+    offset_hours: Hour,
 }
 
 pub trait SleepReporterConfig {
     fn report_range(&self) -> Range<Date>;
-    fn offset_hours(&self) -> i32;
+    fn offset_hours(&self) -> Hour;
 }
 
 impl TsvSleepReporter {
     /// Creates a new `SleepReporter`.
     /// `offset_hours` is used to rotate the 24-hour clock in the report.
     pub fn new(config: &impl SleepReporterConfig) -> Self {
-        assert!((0..24).contains(&config.offset_hours()));
         Self {
             report_range: config.report_range(),
             offset_hours: config.offset_hours(),
@@ -41,8 +42,8 @@ impl ReportSleeps for TsvSleepReporter {
         let header = iter::once(make_header(&self.report_range));
 
         let lines = (0..24).map(move |i| {
-            let hr = self.offset_hours + i;
-            let cells = (0..days).map(|d| show_cell(&table, hr, d)).into_vec().join("\t");
+            let hr = self.offset_hours.inner() + i;
+            let cells = (0..days).map(|d| show_cell(&table, hr as i32, d)).into_vec().join("\t");
 
             format!("{:02}:00～{:02}:00\t{}", hr % 24, (hr + 1) % 24, cells)
         });

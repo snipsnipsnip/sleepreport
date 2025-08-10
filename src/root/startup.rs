@@ -1,7 +1,7 @@
 use crate::{
     app::{self, AppDependency},
     config, io,
-    sleep::{self, SleepReporterConfig},
+    sleep::{self, Hour, SleepReporterConfig},
 };
 use anyhow::Context as _;
 use jiff::civil::Date;
@@ -45,8 +45,8 @@ impl SleepReporterConfig for Dependencies {
         self.config.show_range.clone()
     }
 
-    fn offset_hours(&self) -> i32 {
-        self.config.offset_hours
+    fn offset_hours(&self) -> Hour {
+        Hour::new(self.config.offset_hours.try_into().unwrap())
     }
 }
 
