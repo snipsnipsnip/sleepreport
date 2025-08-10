@@ -19,29 +19,31 @@ pub struct AppConfig {
 pub fn configure(opts: Opts) -> anyhow::Result<AppConfig> {
     AppConfig {
         calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),
-        show_range: opts.date.unwrap_or_else(|| Zoned::now().date()).pipe(calc_show_range),
+        show_range: calc_show_range(opts.date, opts.num_days),
         offset_hours: opts.offset_hours.unwrap_or(6),
     }
     .pipe(Ok)
 }
 
 /// Calculates the 7-day report range based on a given date.
-/// The calculated range always starts on a Monday and covers a full week.
+/// The calculated range always starts on a Monday and covers a full week by default.
 /// Specifically, it finds the Monday of the week *before* the week containing `today`.
 /// The final range spans from that Monday to the following Sunday, inclusive.
-pub fn calc_show_range(today: Date) -> Range<Date> {
-    let start_day = last_monday_before(today);
-    let end_day = start_day + 7.days();
+pub fn calc_show_range(day: Option<Date>, num_days: Option<i32>) -> Range<Date> {
+    let today = day.unwrap_or_else(|| Zoned::now().date());
+    let num_days = num_days.unwrap_or(-7);
 
-    (start_day..end_day).into()
+    let [start_day, end_day] = {
+        let mut r = [today, last_monday(today) + (num_days as i64).days()];
+        r.sort();
+        r
+    };
+
+    start_day..end_day + 1.day()
 }
 
 /// Helper function to find the most recent Monday that occurred before the given `day`.
 /// If the given `day` is a Monday, it will return the Monday of the previous week.
-fn last_monday_before(day: Date) -> Date {
-    let diff_days = match day.weekday().to_monday_zero_offset() {
-        0 => 7.days(), // If it's already Monday, go back a full week.
-        x => x.days(), // Otherwise, go back `x` days to get to the previous Monday.
-    };
-    day - diff_days
+fn last_monday(day: Date) -> Date {
+    day - day.weekday().to_monday_zero_offset().days()
 }
