@@ -1,4 +1,5 @@
 use super::api::{CountSleeps, FetchIcal, LoadSleeps, ReportSleeps};
+use crate::util::IterExt as _;
 use anyhow::Context as _;
 use std::fmt::Display;
 
@@ -17,7 +18,7 @@ pub trait AppDependency {
     /// Provides the functionality to process sleep intervals into a queryable data structure.
     fn count_sleeps(&self) -> impl CountSleeps<Error = impl Into<anyhow::Error>>;
     /// Provides the functionality to generate the final, user-facing report from the sleep data.
-    fn report_sleeps(&self) -> impl ReportSleeps<SleepReport = impl Display>;
+    fn report_sleeps(&self) -> impl ReportSleeps<SleepReport = impl Display, Error = impl Into<anyhow::Error>>;
 }
 
 /// The core application runner. It orchestrates the main logic by using the
@@ -44,16 +45,13 @@ impl<C: AppDependency> App<C> {
             let fetcher = c.fetch_ical();
             let buf = fetcher.fetch_ical().map_err(|e| e.into())?;
 
-            c.load_sleeps()
-                .load_sleeps(buf)
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.into())?
+            c.load_sleeps().load_sleeps(buf).into_try_vec().map_err(|e| e.into())?
         };
         let table = c
             .count_sleeps()
             .count_sleeps(sleeps.into_iter())
             .map_err(|e| e.into())?;
-        let report = c.report_sleeps().report_sleeps(table);
+        let report = c.report_sleeps().report_sleeps(table).map_err(|e| e.into())?;
 
         println!("{}", report);
 

@@ -1,4 +1,3 @@
-use crate::util::RangeLike;
 use jiff::Timestamp;
 use std::{io::BufRead, ops::Range};
 
@@ -36,7 +35,10 @@ pub trait CountSleeps {
 /// Defines the contract for a queryable sleep data structure.
 /// This trait provides methods to inspect the processed sleep data, which are used
 /// by the reporting module to generate the final output.
-pub trait SleepQuery: RangeLike<Item = Timestamp> {
+pub trait SleepQuery {
+    /// Time range this data contains.
+    fn query_range(&self) -> &Range<Timestamp>;
+
     /// Checks if there was sleep recorded at a specific hour on a specific day.
     /// Minutes and seconds of `hour` will be round.
     /// Returns `None` if the queried time is out of range.
@@ -47,7 +49,8 @@ pub trait SleepQuery: RangeLike<Item = Timestamp> {
 /// This abstracts the presentation logic.
 pub trait ReportSleeps {
     type SleepReport;
+    type Error;
 
     /// Takes a `SleepQuery` object and produces a `SleepReport`, which is typically a formatted string.
-    fn report_sleeps(&self, query: impl SleepQuery) -> Self::SleepReport;
+    fn report_sleeps(&self, query: impl SleepQuery) -> Result<Self::SleepReport, Self::Error>;
 }
