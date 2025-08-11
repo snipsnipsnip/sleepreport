@@ -1,4 +1,4 @@
-use crate::app::{ReportSleeps, SleepQuery};
+use crate::app::{Hour, ReportSleeps, SleepQuery};
 use crate::util::{DateRangeExt as _, IterExt as _};
 use jiff::civil::Date;
 use jiff::tz::TimeZone;
@@ -6,8 +6,6 @@ use jiff::{Timestamp, ToSpan as _};
 use std::fmt::{self, Display, Formatter};
 use std::ops::Range;
 use tap::Pipe as _;
-
-pub type Hour = light_ranged_integers::RangedU8<0, 23>;
 
 /// The concrete implementation of the `ReportSleeps` trait.
 /// This struct generates a tab-separated string representation of the sleep data.

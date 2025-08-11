@@ -1,4 +1,5 @@
 use super::Opts;
+use crate::app::Hour;
 use anyhow::Context as _;
 use jiff::{ToSpan as _, Zoned, civil::Date};
 use std::ops::Range;
@@ -10,7 +11,7 @@ use tap::Pipe as _;
 pub struct AppConfig {
     pub calendar_path: String,
     pub show_range: Range<Date>,
-    pub offset_hours: i32,
+    pub offset_hours: Hour,
 }
 
 /// The concrete configuration logic that transforms `Opts` into `AppConfig`.
@@ -20,7 +21,7 @@ pub fn configure(opts: Opts) -> anyhow::Result<AppConfig> {
     AppConfig {
         calendar_path: opts.calendar_path.unwrap_or("basic.ics".into()),
         show_range: calc_show_range(opts.date, opts.num_days),
-        offset_hours: opts.offset_hours.unwrap_or(6),
+        offset_hours: opts.offset_hours.unwrap_or(Hour::new(6)),
     }
     .pipe(Ok)
 }

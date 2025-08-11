@@ -1,3 +1,4 @@
+use crate::app::Hour;
 use anyhow::Context as _;
 use getopts::{Matches, Options};
 use jiff::civil::Date;
@@ -10,7 +11,7 @@ use tap::Pipe as _;
 pub struct Opts {
     pub calendar_path: Option<String>,
     pub date: Option<Date>,
-    pub offset_hours: Option<i32>,
+    pub offset_hours: Option<Hour>,
     pub num_days: Option<i32>,
 }
 
@@ -76,11 +77,7 @@ fn make_opts(m: Matches) -> Result<Opts, anyhow::Error> {
         offset_hours: m
             .opt_get(&kebab(stringify!(offset_hours)))
             .context("parsing the offset number")?
-            .map(|n| {
-                Some(n)
-                    .filter(|m| (0..24).contains(m))
-                    .context("offset number out of range")
-            })
+            .map(|n| Hour::new_try(n).context("offset number out of range"))
             .transpose()?,
         num_days: m
             .opt_get(&kebab(stringify!(num_days)))
@@ -122,7 +119,7 @@ mod tests {
     #[test]
     fn test_parse_opts_offset_hours() {
         let opts = run_parse(&["--offset-hours", "10"]);
-        assert_eq!(opts.offset_hours, Some(10));
+        assert_eq!(opts.offset_hours, Some(Hour::new(10)));
     }
 
     #[test]
@@ -150,7 +147,7 @@ mod tests {
             "14",
         ]);
         assert_eq!(opts.date, Some(Date::from_str("2024-01-01").unwrap()));
-        assert_eq!(opts.offset_hours, Some(10));
+        assert_eq!(opts.offset_hours, Some(Hour::new(10)));
         assert_eq!(opts.calendar_path, Some("/path/to/calendar".to_string()));
         assert_eq!(opts.num_days, Some(14));
     }

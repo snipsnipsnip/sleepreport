@@ -1,10 +1,10 @@
 use crate::{
-    app::{self, AppDependency},
+    app::{self, AppDependency, Hour},
     config, io,
-    sleep::{self, Hour, SleepReporterConfig},
+    sleep::{self, SleepCounterConfig, SleepReporterConfig},
 };
 use anyhow::Context as _;
-use jiff::{civil::Date, tz::TimeZone};
+use jiff::{ToSpan as _, civil::Date, tz::TimeZone};
 use std::{fmt::Display, ops::Range};
 use tap::Pipe as _;
 
@@ -26,7 +26,7 @@ impl AppDependency for Dependencies {
 
     /// Provides the concrete implementation for processing raw sleep data into a queryable format.
     fn count_sleeps(&self) -> impl app::CountSleeps<Error = impl Into<anyhow::Error>> {
-        sleep::SleepCounter::new(self.config.show_range.clone())
+        sleep::SleepCounter::new(self)
     }
 
     /// Provides the concrete implementation for generating the final, user-facing sleep report.
@@ -40,13 +40,27 @@ impl AppDependency for Dependencies {
     }
 }
 
+impl SleepCounterConfig for Dependencies {
+    fn count_range(&self) -> Range<Date> {
+        self.config.show_range.clone()
+    }
+
+    fn offset_hours(&self) -> Hour {
+        self.config.offset_hours
+    }
+
+    fn timezone(&self) -> TimeZone {
+        TimeZone::system()
+    }
+}
+
 impl SleepReporterConfig for Dependencies {
     fn report_range(&self) -> Range<Date> {
         self.config.show_range.clone()
     }
 
     fn offset_hours(&self) -> Hour {
-        Hour::new(self.config.offset_hours.try_into().unwrap())
+        self.config.offset_hours
     }
 
     fn timezone(&self) -> TimeZone {
