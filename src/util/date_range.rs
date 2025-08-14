@@ -11,6 +11,7 @@ pub trait DateRangeExt: Sized + Borrow<Range<Date>> {
     }
 
     /// Calculates the number of days in the range.
+    #[allow(clippy::expect_used)]
     fn num_days(&self) -> i32 {
         self.delta()
             .total(SpanTotal::from(Unit::Day).days_are_24_hours())

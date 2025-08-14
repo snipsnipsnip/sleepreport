@@ -47,7 +47,7 @@ impl CountSleeps for SleepCounter {
 
         let mut table = SleepTable::new(time_range)?;
         for sleep in sleeps {
-            if let None = table.eat(sleep.clone()) {
+            if table.eat(sleep.clone()).is_none() {
                 warn!("event skipped: {sleep:?}")
             }
         }

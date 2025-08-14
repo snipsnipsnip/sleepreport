@@ -18,6 +18,14 @@ unsafe_code = "forbid"
 unstable_features = "forbid"
 unused_imports = "allow"
 
+[lints.clippy]
+expect_used = "deny"
+indexing_slicing = "deny"
+module_inception = "allow"
+panic = "deny"
+uninlined_format_args = "allow"
+unwrap_used = "deny"
+
 [profile.release]
 lto = true
 

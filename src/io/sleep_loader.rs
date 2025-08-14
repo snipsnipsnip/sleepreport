@@ -12,6 +12,7 @@ use tap::Pipe as _;
 /// into an iterator of sleep events.
 pub struct SleepLoader;
 
+#[allow(clippy::new_without_default)]
 impl SleepLoader {
     pub fn new() -> Self {
         Self
@@ -22,7 +23,7 @@ impl LoadSleeps for SleepLoader {
     type Error = anyhow::Error;
 
     fn load_sleeps(&self, reader: impl BufRead) -> impl Iterator<Item = anyhow::Result<Range<Timestamp>>> {
-        IcalParser::new(reader).into_iter().flat_map(|vcal| match vcal {
+        IcalParser::new(reader).flat_map(|vcal| match vcal {
             Ok(ical) => Left(extract_sleeps(ical)),
             Err(e) => Right(iter::once(Err(e).context("parsing ical file"))),
         })

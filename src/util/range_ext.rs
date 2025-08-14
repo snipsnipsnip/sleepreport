@@ -3,9 +3,8 @@ use std::{
     ops::{Range, Sub},
 };
 
-#[allow(dead_code)]
-
 /// Provides extension methods for `Range<T>`.
+#[allow(dead_code)]
 pub trait RangeExt<T>: Borrow<Range<T>> {
     /// Maps a `Range<T>` to a `Range<U>` by applying a function to its start and end.
     fn fmap<U>(self, f: impl FnMut(T) -> U) -> Range<U>
