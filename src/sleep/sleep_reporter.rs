@@ -83,13 +83,10 @@ pub struct SleepReport {
 impl Display for SleepReport {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let formatted_days = self.dates.iter().map(|d| d.to_string()).into_vec().join("\t");
-        writeln!(f, "\t{}", formatted_days)?;
+        write!(f, "\t{}", formatted_days)?;
 
-        for (i, row) in self.rows.iter().enumerate() {
-            if i > 0 {
-                writeln!(f)?;
-            }
-            write!(f, "{}", row)?;
+        for row in &self.rows {
+            write!(f, "\n{}", row)?;
         }
 
         Ok(())
@@ -114,8 +111,12 @@ impl ReportSleeps for TsvSleepReporter {
 
         let rows = (0..24)
             .map(move |i| {
-                let hour_start = self.offset_hours.inner() + i;
-                let values = days.clone().map(|d| state_at(&table, start, hour_start, d)).into_vec();
+                let h: u8 = self.offset_hours.into();
+                let hour_start = h + i;
+                let values = days
+                    .clone()
+                    .map(|d| state_at(&table, start, hour_start as i32, d))
+                    .into_vec();
 
                 SleepReportRow { hour_start, values }
             })
@@ -125,8 +126,8 @@ impl ReportSleeps for TsvSleepReporter {
     }
 }
 
-fn state_at(table: &impl SleepQuery, start: Timestamp, hr: u8, d: i32) -> SleepState {
-    let hour = start + (d * 24 + hr as i32).hours();
+fn state_at(table: &impl SleepQuery, start: Timestamp, hr: i32, d: i32) -> SleepState {
+    let hour = start + (d * 24 + hr).hours();
     match table.is_sleeping_at(hour) {
         Some(true) => SleepState::Asleep,
         Some(false) => SleepState::Awake,
@@ -192,7 +193,7 @@ mod tests {
         let Range { start, end } = to_timestamp_range(report_range.clone())?;
         let mock_sleep_query = MockSleepQuery {
             sleeping_hours,
-            query_range: start..end + (offset_hours.inner() as i32).hours(),
+            query_range: start..end + offset_hours.hours(),
         };
 
         let config = ReportConfig {

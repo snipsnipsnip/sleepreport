@@ -43,7 +43,7 @@ impl CountSleeps for SleepCounter {
         let Range { start, end } = self
             .count_range
             .try_fmap(move |d| self.timezone.to_timestamp(d.to_datetime(Default::default())))?;
-        let time_range = start..end + self.offset_hours.inner().pipe(|n| n as i32).hours();
+        let time_range = start..end + self.offset_hours.hours();
 
         let mut table = SleepTable::new(time_range)?;
         for sleep in sleeps {

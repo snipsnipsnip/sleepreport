@@ -1,7 +1,6 @@
+use super::Hour;
 use jiff::Timestamp;
 use std::{io::BufRead, ops::Range};
-
-pub type Hour = light_ranged_integers::RangedU8<0, 23>;
 
 /// Defines the contract for parsing sleep data from a raw iCalendar source.
 /// This trait abstracts the process of converting a stream of bytes into a structured
