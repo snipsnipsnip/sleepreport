@@ -21,7 +21,7 @@ impl Hour {
 
 impl From<Hour> for i32 {
     fn from(value: Hour) -> Self {
-        value.0.inner() as i32
+        value.into_i32()
     }
 }
 
