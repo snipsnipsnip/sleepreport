@@ -33,6 +33,14 @@ pub trait CountSleeps {
     fn count_sleeps(self, sleeps: impl Iterator<Item = Range<Timestamp>>) -> Result<impl SleepQuery, Self::Error>;
 }
 
+/// Represents the state for a given hour.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum SleepState {
+    Asleep,
+    Awake,
+    Unknown,
+}
+
 /// Defines the contract for a queryable sleep data structure.
 /// This trait provides methods to inspect the processed sleep data, which are used
 /// by the reporting module to generate the final output.
@@ -41,9 +49,8 @@ pub trait SleepQuery {
     fn query_range(&self) -> &Range<Timestamp>;
 
     /// Checks if there was sleep recorded at a specific hour on a specific day.
-    /// Minutes and seconds of `hour` will be round.
-    /// Returns `None` if the queried time is out of range.
-    fn is_sleeping_at(&self, hour: Timestamp) -> Option<bool>;
+    /// The time is rounded down to the nearest hour.
+    fn is_sleeping_at(&self, hour: Timestamp) -> SleepState;
 }
 
 /// Defines the contract for generating user-facing sleep report.

@@ -1,8 +1,7 @@
+use crate::app::SleepState::{self, Asleep, Awake, Unknown};
 use crate::app::{Hour, ReportSleeps, SleepQuery};
 use crate::util::{DateRangeExt as _, IterExt as _};
-use jiff::civil::Date;
-use jiff::tz::TimeZone;
-use jiff::{Timestamp, ToSpan as _};
+use jiff::{Timestamp, ToSpan as _, civil::Date, tz::TimeZone};
 use std::fmt::{self, Display, Formatter};
 use std::ops::Range;
 use tap::Pipe as _;
@@ -34,24 +33,6 @@ impl TsvSleepReporter {
     }
 }
 
-// Represents the state for a given hour.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum SleepState {
-    Asleep,
-    Awake,
-    Unknown,
-}
-
-impl Display for SleepState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            SleepState::Asleep => write!(f, "睡眠"),
-            SleepState::Awake => write!(f, ""),
-            SleepState::Unknown => write!(f, "？"),
-        }
-    }
-}
-
 // Represents a single row in the report (for a specific hour).
 #[derive(Debug, PartialEq, Eq)]
 pub struct SleepReportRow {
@@ -66,10 +47,18 @@ impl Display for SleepReportRow {
         write!(f, "{:02}:00～{:02}:00", hr % 24, (hr + 1) % 24)?;
 
         for value in &self.values {
-            write!(f, "\t{}", value)?;
+            write!(f, "\t{}", show_state(*value))?;
         }
 
         Ok(())
+    }
+}
+
+fn show_state(state: SleepState) -> &'static str {
+    match state {
+        Asleep => "睡眠",
+        Awake => "",
+        Unknown => "？",
     }
 }
 
@@ -128,26 +117,15 @@ impl ReportSleeps for TsvSleepReporter {
 
 fn state_at(table: &impl SleepQuery, start: Timestamp, hr: i32, d: i32) -> SleepState {
     let hour = start + (d * 24 + hr).hours();
-    match table.is_sleeping_at(hour) {
-        Some(true) => SleepState::Asleep,
-        Some(false) => SleepState::Awake,
-        None => SleepState::Unknown,
-    }
+    table.is_sleeping_at(hour)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::util::RangeExt;
-
     use super::*;
-    use crate::util::assert_eq;
-    use jiff::{
-        Timestamp,
-        civil::{Date, DateTime, Time, date, datetime, time},
-        tz::TimeZone,
-    };
+    use crate::util::{RangeExt, assert_eq};
+    use jiff::civil::{Date, DateTime, Time, date, datetime, time};
     use std::collections::HashSet;
-    use tap::Pipe as _;
 
     struct MockSleepQuery {
         sleeping_hours: HashSet<Timestamp>,
@@ -155,10 +133,15 @@ mod tests {
     }
 
     impl SleepQuery for MockSleepQuery {
-        fn is_sleeping_at(&self, timestamp: Timestamp) -> Option<bool> {
-            self.query_range
-                .contains(&timestamp)
-                .then(move || self.sleeping_hours.contains(&timestamp))
+        fn is_sleeping_at(&self, timestamp: Timestamp) -> SleepState {
+            if !self.query_range.contains(&timestamp) {
+                return Unknown;
+            }
+            if self.sleeping_hours.contains(&timestamp) {
+                Asleep
+            } else {
+                Awake
+            }
         }
 
         fn query_range(&self) -> &Range<Timestamp> {
@@ -227,11 +210,11 @@ mod tests {
                     let values = (0..report_range.num_days())
                         .map(|d| {
                             if (i == 22 || i == 23) && d == 0 {
-                                SleepState::Asleep
+                                Asleep
                             } else if i == 0 && d == 1 {
-                                SleepState::Asleep
+                                Asleep
                             } else {
-                                SleepState::Awake
+                                Awake
                             }
                         })
                         .into_vec();
@@ -255,7 +238,7 @@ mod tests {
             rows: (0..24)
                 .map(|i| SleepReportRow {
                     hour_start: i,
-                    values: vec![SleepState::Awake; report_range.num_days() as usize],
+                    values: vec![Awake; report_range.num_days() as usize],
                 })
                 .into_vec(),
         };
@@ -280,13 +263,7 @@ mod tests {
             .map(|i| {
                 let hour_start = 3 + i;
                 let values = (0..report_range.num_days())
-                    .map(|d| {
-                        if hour_start == 2 && d == 0 {
-                            SleepState::Asleep
-                        } else {
-                            SleepState::Awake
-                        }
-                    })
+                    .map(|d| if hour_start == 2 && d == 0 { Asleep } else { Awake })
                     .into_vec();
                 SleepReportRow { hour_start, values }
             })
@@ -318,7 +295,7 @@ mod tests {
             dates: report_range.iter_days().into_vec(),
             rows: (0..24)
                 .map(|hour_start| {
-                    let values = vec![SleepState::Unknown];
+                    let values = vec![Unknown];
                     SleepReportRow { hour_start, values }
                 })
                 .into_vec(),
@@ -335,15 +312,15 @@ mod tests {
             rows: vec![
                 SleepReportRow {
                     hour_start: 0,
-                    values: vec![SleepState::Asleep],
+                    values: vec![Asleep],
                 },
                 SleepReportRow {
                     hour_start: 1,
-                    values: vec![SleepState::Awake],
+                    values: vec![Awake],
                 },
                 SleepReportRow {
                     hour_start: 2,
-                    values: vec![SleepState::Unknown],
+                    values: vec![Unknown],
                 },
             ],
         };

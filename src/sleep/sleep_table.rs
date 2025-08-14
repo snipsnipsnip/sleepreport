@@ -1,4 +1,5 @@
 use crate::app::SleepQuery;
+use crate::app::SleepState::{self, Asleep, Awake, Unknown};
 use crate::util::RangeExt as _;
 use jiff::{Timestamp, Unit};
 use std::ops::Range;
@@ -66,10 +67,12 @@ impl SleepTable {
 impl SleepQuery for SleepTable {
     /// Checks if sleep was recorded at a specific `DateTime`.
     /// The time is rounded down to the nearest hour.
-    fn is_sleeping_at(&self, hour: Timestamp) -> Option<bool> {
-        let index = self.index_at(hour)?;
-
-        self.slept.get(index).copied()
+    fn is_sleeping_at(&self, hour: Timestamp) -> SleepState {
+        match self.index_at(hour).and_then(move |i| self.slept.get(i)) {
+            Some(true) => Asleep,
+            Some(false) => Awake,
+            None => Unknown,
+        }
     }
 
     fn query_range(&self) -> &Range<Timestamp> {
@@ -87,7 +90,6 @@ mod tests {
         tz::TimeZone,
     };
     use std::iter::repeat_n;
-    use tap::Pipe as _;
 
     #[test]
     fn test_is_sleeping_at() -> anyhow::Result<()> {
@@ -100,9 +102,9 @@ mod tests {
             (-1..=24)
                 .map(|hr: i64| table.is_sleeping_at(start_time + (60 * hr).minutes()))
                 .into_vec(),
-            repeat_n(None, 1)
-                .chain(repeat_n(Some(false), 24))
-                .chain(repeat_n(None, 1))
+            repeat_n(Unknown, 1)
+                .chain(repeat_n(Awake, 24))
+                .chain(repeat_n(Unknown, 1))
                 .into_vec()
         );
 
@@ -113,11 +115,11 @@ mod tests {
             (-1..=24)
                 .map(|hr: i64| table.is_sleeping_at(start_time + (60 * hr).minutes()))
                 .into_vec(),
-            repeat_n(None, 1)
-                .chain(repeat_n(Some(false), 1))
-                .chain(repeat_n(Some(true), 2))
-                .chain(repeat_n(Some(false), 21))
-                .chain(repeat_n(None, 1))
+            repeat_n(Unknown, 1)
+                .chain(repeat_n(Awake, 1))
+                .chain(repeat_n(Asleep, 2))
+                .chain(repeat_n(Awake, 21))
+                .chain(repeat_n(Unknown, 1))
                 .into_vec()
         );
 
