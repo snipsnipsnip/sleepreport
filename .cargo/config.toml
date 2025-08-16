@@ -1,0 +1,4 @@
+[alias]
+cargo-bin = ["run", "--manifest-path=cargo-bin/Cargo.toml", "--"]
+layered-crate = ["cargo-bin", "layered-crate"]
+make = ["cargo-bin", "cargo-make"]

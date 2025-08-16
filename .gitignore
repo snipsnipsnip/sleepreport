@@ -1,7 +1,8 @@
 Thumbs.db
-/target
+target/
 Cargo.lock
 *.bk
 *.bak
 ~*
 mod.rs
+.bin/

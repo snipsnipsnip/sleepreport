@@ -1,0 +1,16 @@
+# run me with `cargo make`
+
+[config]
+default_to_workspace = false
+
+[tasks.default]
+alias = "routine"
+
+[tasks.routine]
+dependencies = ["fmt", "layered-crate", "clippy", "test"]
+
+[tasks]
+clippy = { command = "cargo", args = ["clippy"] }
+fmt = { command = "cargo", args = ["fmt"] }
+layered-crate = { command = "cargo", args = ["layered-crate"] }
+test = { command = "cargo", args = ["test"] }
