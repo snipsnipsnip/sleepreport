@@ -4,7 +4,7 @@
 
 [layer]
 app = {depends-on = ["util"]}
-config = {}
+config = {depends-on = ["util", "app"]}
 io = {depends-on = ["util", "app"]}
 root = {depends-on = ["util", "app", "io", "sleep", "config"]}
 sleep = {depends-on = ["util", "app"]}
